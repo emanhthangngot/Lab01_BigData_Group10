@@ -43,8 +43,11 @@ Toàn bộ 4 thành viên phải tự cài đặt cụm **Pseudo-distributed** t
 - **Ràng buộc kỹ thuật:**
   - Ngôn ngữ bắt buộc: **Scala** (dùng Python sẽ bị 0 điểm phần ngôn ngữ).
   - Thuật toán: MapReduce hoặc Spark RDD.
+  - Bắt buộc đọc dữ liệu trực tiếp từ HDFS (không đọc file local), ví dụ: `sc.textFile("hdfs://<namenode-host>:<port>/hcmus/<StudentID>/words.txt")`.
   - Cấm sử dụng Regular Expression trên toàn bộ file (không tuân thủ nguyên tắc xử lý phân tán).
   - Nên tách từ bằng phương pháp đơn giản (ví dụ: `split(" ")` + lọc chuỗi rỗng) thay vì dùng `split("\\s+")` để tránh bị quy vào sử dụng regex.
+  - Chuẩn hóa chữ thường trước khi kiểm tra ký tự đầu, ví dụ: `word.toLowerCase.startsWith(...)` để đảm bảo đúng yêu cầu case-insensitive.
+  - Khi xuất kết quả TSV phải dùng đúng ký tự tab `\t` giữa key và value; không thay bằng khoảng trắng.
 - **Dữ liệu đầu vào:** File `words.txt` trên HDFS.
 - **Dữ liệu đầu ra:** File định dạng TSV, ví dụ:
   ```text
@@ -217,8 +220,9 @@ Thành viên **D** không phụ trách riêng một cụm Fully-distributed. Tha
 ### 7. Quy trình kiểm định kết quả WordCount
 
 - Tạo một file test nhỏ (10–20 từ) có đáp án tính tay trước.
-- Chạy chương trình WordCount trên file test và so sánh đầu ra TSV với đáp án kỳ vọng.
-- Sau khi xác nhận logic đúng, mới chạy trên file `words.txt` chính thức.
+- Upload file test lên HDFS và chạy WordCount bằng đường dẫn HDFS để xác nhận pipeline đúng từ đầu vào đến đầu ra.
+- Chạy chương trình WordCount trên file test và so sánh đầu ra TSV với đáp án kỳ vọng (kiểm tra đủ 3 điều kiện: đọc từ HDFS, xử lý `toLowerCase`, định dạng tab `\t`).
+- Sau khi xác nhận logic đúng, mới chạy trên file `words.txt` chính thức trên HDFS.
 
 ---
 
