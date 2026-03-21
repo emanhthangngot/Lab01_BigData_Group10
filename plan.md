@@ -1,171 +1,194 @@
-# Kế Hoạch Thực Hiện Dự Án - Lab 1: Hệ Sinh Thái Hadoop
-
-Tài liệu này là bản kế hoạch thực thi chi tiết dành cho nhóm 4 thành viên (Thành viên A, B, C và D) nhằm hoàn thành đồ án **Introduction to Hadoop Ecosystem**. Kế hoạch được thiết kế để phân chia công việc hợp lý, tối ưu hóa điểm thưởng (bonus points), tránh xung đột mã nguồn và tuân thủ tuyệt đối quy trình về định dạng nộp bài (submission format).
-
----
-
-## I. HIỂU RÕ YÊU CẦU ĐỒ ÁN
-
-**Mục Tiêu Chính:**
-1. **Cài đặt Hadoop & HDFS**: Thiết lập 1 cụm pseudo-distributed và 3 cụm fully-distributed. Thực hiện các thao tác HDFS cơ bản, quản lý phân quyền và chạy file `.jar` để xác thực hệ thống.
-2. **WordCount bằng Scala**: Viết chương trình MapReduce bằng ngôn ngữ Scala để đếm số lượng các từ bắt đầu bằng các chữ cái `f, i, t, h, c, m, u, s` (không phân biệt chữ hoa/thường) trong file `words.txt`. Xuất kết quả ra định dạng chuẩn TSV (Tab-Separated Values).
-3. **Strict Submission Rules**: Tuân thủ chính xác cấu trúc thư mục yêu cầu, nén thành file zip mang tên `<RepresentativeID>`, và tổng hợp tất cả tài liệu minh chứng (logs, ảnh chụp lỗi) vào file `Report.pdf`.
-
-**Các Ràng Buộc Quan Trọng & Cập Nhật Từ Giảng Viên:**
-- Bắt buộc sử dụng ngôn ngữ **Scala** cho bài WordCount (Sử dụng Python sẽ không được tính điểm phần ngôn ngữ lập trình).
-- Phải nộp kèm file `<StudentID>_verification.txt`. Thiếu file này sẽ bị trừ **-4.5 điểm**.
-- **CỰC KỲ QUAN TRỌNG:** Mỗi máy tính/cụm của sinh viên phải có địa chỉ IP độc lập. Giảng viên đã răn đe: **Nếu phát hiện các địa chỉ IP trùng lặp giữa các bài nộp, hình phạt sẽ là 0 ĐIỂM cho toàn bộ bài tập.**
-- Báo cáo `Report.pdf` nếu nộp chung 1 bản duy nhất thì bắt buộc phải được chia nội dung RÕ RÀNG theo từng phần của mỗi `<StudentID>`.
+# PROJECT PLAN - LAB 01: INTRODUCTION TO HADOOP ECOSYSTEM
+*(Tài liệu này được thiết kế chi tiết ở mức độ đặc tả kỹ thuật, đảm bảo bất kỳ AI Agent hay thành viên nào đọc vào cũng có thể hiểu 100% bối cảnh, yêu cầu và quy trình thực thi dự án).*
 
 ---
 
-## II. PHÂN CÔNG NHIỆM VỤ THÀNH VIÊN
+## I. TỔNG QUAN DỰ ÁN (EXECUTIVE SUMMARY)
+- **Môn học:** Introduction to Big Data.
+- **Mục tiêu cốt lõi:** Làm quen với Hệ sinh thái Hadoop, biết cách tự cài đặt cụm phân tán (cluster), thao tác thành thạo với HDFS (Hadoop Distributed File System) qua dòng lệnh, và giải quyết bài toán Big Data kinh điển (WordCount) bằng ngôn ngữ Scala.
+- **Quy mô nhóm:** 4 thành viên (A, B, C, D).
+- **Yêu cầu cài đặt:** Cần 1 cụm Pseudo-distributed và `n-1` (tức 3) cụm Fully-distributed.
+- **Yêu cầu Nộp bài (Submission):** Cực kỳ khắt khe về định dạng thư mục, yêu cầu minh chứng bằng hình ảnh (screenshots) cho MỌI thao tác, và chống gian lận (IP thiết bị phải độc lập hoàn toàn, trùng IP = 0 điểm toàn bài).
 
-**Bảng Ánh Xạ Thành Viên:**
+---
 
+## II. ĐẶC TẢ YÊU CẦU CHI TIẾT THEO LAB 1 - HDFS.PDF
+
+### 1. Phần 1: Thiết lập Hadoop Cluster & HDFS (4.5 Điểm)
+Tất cả các thành viên phải tự thực hiện trên máy ảo/môi trường riêng (có IP riêng biệt) các tác vụ sau:
+*   **Cài đặt:** Khởi tạo các Node (NameNode, DataNode, ResourceManager, NodeManager).
+*   **Thao tác HDFS & Phân quyền:**
+    *   Tạo thư mục root: `hdfs dfs -mkdir /hcmus`
+    *   Tạo user Linux nội bộ: `khtn_<StudentID>`
+    *   Tạo thư mục con: `hdfs dfs -mkdir /hcmus/<StudentID>`
+    *   Đẩy file dữ liệu lên HDFS: `hdfs dfs -put <file_bất_kỳ> /hcmus/<StudentID>/`
+    *   Cấp quyền thư mục: `hdfs dfs -chmod 744 /hcmus/<StudentID>`
+    *   Chuyển quyền sở hữu: `hdfs dfs -chown khtn_<StudentID> /hcmus/<StudentID>`
+*   **Chạy File Xác Thực (Bắt buộc - Thiếu sẽ bị trừ 4.5đ):**
+    *   Sử dụng file `hadoop-test.jar` được cung cấp.
+    *   Lệnh: `java -jar /path/to/hadoop-test.jar <YOUR_HDFS_PORT> /hcmus/<StudentID>` (Port HDFS thường là 9000).
+    *   Lệnh này sẽ sinh ra file `<StudentID>_verification.txt`. Phải lấy file này nộp kèm.
+    *   *Lưu ý xử lý lỗi:* Nếu gặp lỗi mạng `Exception in thread main null... Main getMac`, phải tìm cách fix, hoặc ít nhất chụp lại quá trình tra cứu Google/debug bỏ vào báo cáo.
+
+### 2. Phần 2: Khởi động với WordCount (5.0 Điểm)
+*   **Bài toán:** Viết chương trình đếm số lượng các từ bắt đầu bằng danh sách chữ cái chỉ định: **f, i, t, h, c, m, u, s**.
+*   **Ràng buộc logic:**
+    *   Không phân biệt hoa thường (Case-insensitive).
+    *   Bao gồm cả ký tự đặc biệt nối liền từ (Special character inclusive).
+*   **Ràng buộc kỹ thuật:**
+    *   **Ngôn ngữ BẮT BUỘC:** **Scala** (Sử dụng Python bị 0 điểm phần ngôn ngữ).
+    *   Thuật toán: MapReduce hoặc Spark RDD cơ bản.
+    *   **CẤM:** Không được dùng Regular Expression (Regex) để xử lý trên toàn bộ file văn bản (vì không tuân thủ tính chất phân tán của Big Data). Nếu dùng Python (cho dù mất điểm ngôn ngữ), cũng tuyệt đối cấm dùng phương pháp Streaming.
+*   **Dữ liệu đầu vào:** File `words.txt` (nằm trên HDFS).
+*   **Dữ liệu đầu ra:** Xuất ra file định dạng **TSV** (Tab-Separated Values). 
+    *   Ví dụ cấu trúc file xuất ra:
+        ```text
+        f   1
+        i   3
+        t   5
+        ```
+
+### 3. Phần 3: Báo cáo & Nộp bài (Minh chứng & Định dạng)
+*   **Luật Chụp Ảnh (Screenshotted Rule):** MỌI lệnh gõ ở Phần 1 và MỌI lỗi gặp phải đều phải chụp lại màn hình (ưu tiên lấy được IP và thời gian hệ thống) và đưa vào file `Report.pdf` kèm vài dòng giải thích.
+*   **Định dạng Nén:** Một file ZIP duy nhất tên `<RepresentativeID>.zip`.
+
+---
+
+## III. PHÂN CÔNG NHIỆM VỤ VÀ QUY HOẠCH HỆ THỐNG
+
+### 1. Bảng Ánh Xạ Thành Viên
 | Mã Thành Viên | Họ và Tên |
 | :---: | :--- |
 | **A** | Lê Xuân Trí |
 | **B** | Nguyễn Hồ Anh Tuấn |
 | **C** | Trần Hữu Kim Thành |
-| **D** | Trần Lê Trung Trực |
+| **D** | Nguyễn Lê Trung Trực |
 
-Nhằm đáp ứng yêu cầu $n-1$ cụm fully-distributed và hoàn thành tối đa điểm thưởng, công việc được phân bổ như sau:
+### 2. Vai trò và Cấu hình Cụm (Cluster Roles)
+Nhóm có 4 người, phân bổ để lấy 100% điểm thưởng (Bonus):
 
-### 1. Phân Công Giai Đoạn Cài Đặt (Installation Phase)
-
-| Thành Viên | Môi Trường Mạng & Vai Trò | Cụm Hadoop Yêu Cầu | Ghi Chú & Mục Tiêu Điểm Thưởng |
+| Thành viên | Cụm cài đặt | Cấu hình & Mục tiêu | Ghi chú IP |
 | :--- | :--- | :--- | :--- |
-| **A** (Nhóm trưởng) | **Pseudo-distributed** | 1 Pseudo-distributed cluster | Thiết lập cá nhân. Chịu trách nhiệm tổng hợp, kiểm tra quy chuẩn thư mục và đóng gói file ZIP cuối cùng trước khi nộp. |
-| **B** | **Fully-distributed (VMs/Docker)** | 1 Fully-distributed cluster | Thiết lập YARN. **Cấu hình tối thiểu 1 Master và 2 workers (NodeManagers) để nhận Bonus #1.** (Ghi chú: Giảng viên có đề cập setup hướng tới 4 slaves, nhưng tối thiểu theo chuẩn file PDF để lấy điểm là 2 workers). |
-| **C** | **Fully-distributed (Physical)** | 1 Fully-distributed cluster | Thiết lập trên thiết bị vật lý phân biệt hoặc 2 máy chủ Cloud instances. **Thiết lập ít nhất 2 physical machines và tối thiểu 2 workers để nhận Bonus #2.** |
-| **D** | **Fully-distributed (WSL/VMs)** | 1 Fully-distributed cluster | Thiết lập YARN bằng WSL/VM. Chịu trách nhiệm **xây dựng mã nguồn Scala chuẩn** để nhóm tham chiếu. |
+| **A (Leader)** | **Pseudo-distributed** | Cài local. Kiểm duyệt toàn bộ Report, IP, cấu trúc file, gom file và nộp. Đồng thời **A là Dev chính viết mã nguồn Scala** chuẩn cho cả nhóm xài chung. | Phải có IP độc lập |
+| **B** | **Fully-distributed** | Dựng YARN bằng VM/Docker. Cần tối thiểu **1 Master + 2 Workers** để lấy **Bonus 1**. | Phải có IP độc lập |
+| **C** | **Fully-distributed** | Dựng YARN trên thiết bị vật lý. Cần tối thiểu **2 physical machines + 2 Workers** lấy **Bonus 2**. | Phải có IP độc lập |
+| **D** | **Fully-distributed** | Dựng YARN bằng WSL/VM. | Phải có IP độc lập |
 
-### 2. Danh Sách Nghiệp Vụ Bắt Buộc (Mandatory Shared Checklist)
-
-Mỗi cá nhân phải chủ động thực thi các lệnh sau trên hệ thống cá nhân (Lưu ý: Phải chụp lại minh chứng cho mỗi bước theo Phần IV):
-- [ ] **Lấy định danh IP**: Chạy lệnh `ip addr` hoặc `ifconfig` để chứng minh IP máy hiện tại là DUY NHẤT.
-- [ ] Thiết lập thư mục root HDFS: `hdfs dfs -mkdir /hcmus`
-- [ ] Khởi tạo user HDFS: (Lệnh ví dụ trên Linux: `sudo adduser khtn_<StudentID>`)
-- [ ] Thiết lập phân khu cá nhân: `hdfs dfs -mkdir /hcmus/<StudentID>`
-- [ ] Cập nhật (Upload) file lên HDFS: `hdfs dfs -put <local_filepath> /hcmus/<StudentID>/`
-- [ ] Quyền hạn (chmod): `hdfs dfs -chmod 744 /hcmus/<StudentID>`
-- [ ] Chủ sở hữu (chown): `hdfs dfs -chown khtn_<StudentID> /hcmus/<StudentID>`
-- [ ] **Thực hiện Java verification**: `java -jar hadoop-test.jar <CỔNG_HDFS_CỦA_BẠN> /hcmus/<StudentID>`
-- [ ] Bảo lưu file `<StudentID>_verification.txt`.
-
----
-
-## III. QUY CÁCH QUẢN LÝ VERSION & DIROCTORY STRUCTURE CỦA DỰ ÁN
-
-### 1. Sơ Đồ Định Dạng Cấu Trúc (Structural Blueprint)
+### 2. Cấu Trúc Thư Mục Nộp Bài Chuẩn (Standard Blueprint)
+**TUYỆT ĐỐI KHÔNG ĐƯỢC SAI LỆCH cấu trúc này:**
 ```text
-Root/
-├── <RepresentativeID>/ (Ví dụ: 23120001)
-│   ├── <StudentID_A>/
-│   │   ├── docs/
-│   │   │   ├── Report.pdf
-│   │   │   └── <StudentID_A>_verification.txt
-│   │   └── src/
-│   │       └── WordCount/
-│   │           ├── results.txt
-│   │           ├── WordCount.scala
-│   │           └── README.md
-│   ├── <StudentID_B>/
-│   ├── <StudentID_C>/
-│   └── <StudentID_D>/
-└── .gitignore
+<RepresentativeID>.zip (Ví dụ: 23120001.zip)
+└── <RepresentativeID>/
+    ├── <StudentID_A>/
+    │   ├── docs/
+    │   │   ├── Report.pdf (Báo cáo cá nhân chứa đủ 13+ ảnh minh chứng)
+    │   │   └── <StudentID_A>_verification.txt (Sinh ra từ file JAR)
+    │   └── src/
+    │       └── WordCount/
+    │           ├── results.txt (File TSV đếm từ)
+    │           ├── WordCount.scala (Mã nguồn)
+    │           └── README.md (Hướng dẫn chạy code)
+    ├── <StudentID_B>/ (Cấu trúc y hệt A)
+    ├── <StudentID_C>/ (Cấu trúc y hệt A)
+    └── <StudentID_D>/ (Cấu trúc y hệt A)
 ```
-*Lưu ý từ giảng viên:* Dù code được share từ Member D, **MỖI SINH VIÊN** vẫn bắt buộc phải sở hữu và nộp file `WordCount.scala` của riêng mình vào trong thư mục `src/WordCount/` mang `<StudentID>` của bản thân.
+*(Ghi chú: Dù A viết code, nhưng B, C, D phải lấy code đó tự chạy trên cụm của mình để lấy file results.txt và chụp ảnh terminal lúc chạy).*
 
-### 2. Chiến Lược Hợp Nhất Các Branch
-- Nhánh **`main`**: Archive Branch lưu phiên bản nén để nộp.
-- Nhánh **`member/<StudentID>`**: Không gian làm việc cá nhân của mỗi thành viên, loại bỏ hoàn toàn rủi ro Merge Conflict.
-
----
-
-## IV. PHẦN 1 – QUY TRÌNH CÀI ĐẶT VÀ CHỤP ẢNH MINH CHỨNG (INSTALLATION & SCREENSHOT WORKFLOW)
-
-**Quy tắc tối thượng:** Thực thi lệnh ➔ Chụp toàn bộ góc rộng màn hình (ưu tiên thấy thời gian & IP) ➔ Dán vào file Báo cáo ➔ Làm tiếp.
-
-### Quy Trình Thao Tác Chụp Ảnh Chuẩn Xác
-
-**Bước 0: Xác thực Chỉ Số IP (Bắt Buộc Bổ Sung Mới Khẩn Cấp)**
-- **Thao tác:** Mở Terminal nội bộ, gõ `ip addr` hoặc `ifconfig`.
-- **Hành động minh chứng (Screenshot 0):** Chụp rõ địa chỉ IP IPv4 của thiết bị ảo/vật lý hiện hành. Địa chỉ này phải lưu vào tài liệu để giảng viên đối chiếu tính nguyên bản, tránh hình phạt 0 điểm.
-
-**Bước 1: Khởi tạo và Format HDFS**
-- **Thao tác:** Khai báo XML xong, chạy lệnh `hdfs namenode -format`.
-- **Hành động minh chứng (Screenshot 1):** Chụp Terminal hiển thị rõ báo cáo `successfully formatted`.
-
-**Bước 2: Khởi chạy cụm Hadoop (Startup Cluster)**
-- **Thao tác:** Chạy `start-dfs.sh` và `start-yarn.sh`. 
-- **Hành động minh chứng (Screenshot 2):** Chụp màn hình Terminal sau khi cả hai dịch vụ nạp xong.
-
-**Bước 3: Thẩm vấn các Processes (Lệnh jps)**
-- **Thao tác:** Khởi phát `jps` trên tất cả các Worker/Master.
-- **Hành động minh chứng (Screenshot 3):** Chụp Console trả output (phải có đủ DataNode/NodeManager/NameNode/ResourceManager).
-
-**Bước 4: Kiểm chứng qua Web UI**
-- **Thao tác:** Truy cập `http://localhost:9870`, di chuyển sang Tab **Datanodes**.
-- **Hành động minh chứng (Screenshot 4):** Chụp toàn bộ giao diện Browser hiển thị rõ số lượng Live Nodes trùng khớp.
-
-**Bước 5: Thẩm định HDFS (Khởi tạo thư mục & Upload)**
-- **Thao tác:** Chạy tuần tự `mkdir`, `put`, và chốt bằng lệnh `hdfs dfs -ls /hcmus/<StudentID>/`.
-- **Hành động minh chứng (Screenshot 5):** Chụp Terminal biểu hiện nội dung file vừa upload hiển thị trong danh sách list.
-
-**Bước 6: Khai Thác Phân Phối Quyền HDFS (Chmod & Chown)**
-- **Thao tác:** Setup `chmod 744`, `chown`, và check lại bằng `hdfs dfs -ls /hcmus/`.
-- **Hành động minh chứng (Screenshot 6):** Chụp minh chứng output `ls` hiển thị quyền chủ quản đích danh thuộc về `khtn_<StudentID>`.
-
-**Bước 7: Xuất lệnh Verification Executable File (jar)**
-- **Thao tác:** Chạy `java -jar hadoop-test.jar <CỔNG> /hcmus/<StudentID>`.
-- **Hành động minh chứng (Screenshot 7):** Chụp màn hình Terminal báo Success. Gõ thêm `ls` tại local để xác nhận file `.txt` sinh ra thành công rồi chụp lại.
-
-**Bước 8 (NẾU CÓ LỖI): Luồng Xử Lý Sự Cố (Troubleshooting Workflow)**
-- Chụp khẩn toàn màn hình báo lỗi (vd: `Connection Refused`).
-- Khi sử dụng Google, chụp cả giao diện Browser mang giải pháp.
-- Áp dụng phương án và chụp ảnh lúc cấu hình (sửa `/etc/hosts`...).
-- Test lại lệnh lỗi ban đầu, chụp xác nhận thành công. Tổ hợp 4 ảnh này là kho điểm cho `Report.pdf`.
+### 3. Quy Luật Phân Nhánh và Quản Lý Mã Nguồn (Branching Strategy)
+Để đảm bảo không có xung đột mã nguồn (Merge Conflict) và dễ dàng quản lý bài nộp, nhóm áp dụng quy tắc quản lý nhánh (Git) như sau:
+*   **Nhánh `main`:** Lưu trữ phiên bản hoàn chỉnh và thư mục chuẩn. Chỉ Leader (A) mới có quyền hợp nhất (merge) các phần nộp và tạo bản nén ZIP cuối cùng. Không ai được làm việc (commit) trực tiếp trên nhánh này.
+*   **Nhánh `member/<StudentID>`:** Mỗi cá nhân tự tạo nhánh riêng từ `main` để làm việc. Ví dụ: `member/23120001`.
+    *   Thành viên chỉ tải (commit/push) tài liệu, hình ảnh, file kết quả vào đúng thư mục mang MSSV của mình.
+    *   Khi làm xong, mở Pull Request (PR) về nhánh `main` để Leader đánh giá (QA) và duyệt.
+*   **Không gian chia sẻ mã nguồn (Leader A):** Leader A sau khi viết xong mã nguồn Scala chuẩn, sẽ đưa lên một nhánh riêng biệt, ví dụ `shared/wordcount-core`. Các thành viên B, C, D sẽ tải (pull/cherry-pick) code từ nhánh này về máy tính cá nhân để thực thi trên cụm riêng của mình.
 
 ---
 
-## V. PHẦN 2 – PHÁT TRIỂN CHƯƠNG TRÌNH (WORDCOUNT)
+## IV. WORKFLOW DÀNH CHO AI AGENT HỖ TRỢ THÀNH VIÊN
+Nếu một AI Agent được giao nhiệm vụ hỗ trợ một thành viên (ví dụ A, B, C, D), Agent cần tuân thủ Workflow sau:
 
-### 1. Ràng Buộc Triển Khai
-- **Ngôn ngữ**: Scala.
-- **Target Characters**: `f, i, t, h, c, m, u, s` (Case-insensitive).
-- **Tuyệt đối không sử dụng Regex** cho thuật toán xử lý dữ liệu lớn.
+### Phase 1: Môi trường & Minh chứng IP
+- Yêu cầu người dùng chạy lệnh `ip addr` hoặc `ifconfig`.
+- **Nhắc nhở:** Báo người dùng chụp ảnh màn hình lệnh này lưu vào báo cáo (Bức ảnh số 0).
 
-### 2. Triển Khai Xử Lý Chuỗi (Implementation Guide)
+### Phase 2: Triển khai & Chụp ảnh HDFS
+Agent cung cấp chính xác các lệnh shell sau và yêu cầu người dùng **CHỤP ẢNH TỪNG BƯỚC MỘT**:
+1. Lệnh Format: `hdfs namenode -format`
+2. Lệnh Start: `start-dfs.sh` và `start-yarn.sh`
+3. Lệnh kiểm tra: `jps` (Xác nhận đủ 5 tiến trình) và check WebUI `http://localhost:9870`.
+4. Các lệnh File System:
+   - `hdfs dfs -mkdir /hcmus`
+   - Tạo user (tùy OS, vd: `sudo adduser khtn_<StudentID>`)
+   - `hdfs dfs -mkdir /hcmus/<StudentID>`
+   - `hdfs dfs -put words.txt /hcmus/<StudentID>/`
+   - `hdfs dfs -chmod 744 /hcmus/<StudentID>`
+   - `hdfs dfs -chown khtn_<StudentID> /hcmus/<StudentID>`
+5. Chạy file JAR xác thực: Hướng dẫn người dùng gõ `java -jar hadoop-test.jar 9000 /hcmus/<StudentID>` và lưu trữ file TXT sinh ra.
+*Lưu ý xử lý lỗi:* Nếu có lỗi xảy ra ở bất kỳ lệnh nào, Agent phải bảo người dùng chụp màn hình lỗi lại, cung cấp solution sửa lỗi, và bảo người dùng chụp lại quá trình sửa để nhét vào Report.
+
+### Phase 3: Triển khai Code Scala
+Agent cung cấp mã nguồn Scala bám sát yêu cầu (Không regex toàn cục, Lọc theo chữ cái thường/hoa, Trả về mảng Key-Value, ReduceByKey, Lưu file format TSV). Mẫu code cơ bản:
 ```scala
 val targetChars = Set('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
-
 val words = textFile.flatMap(line => line.split("\\s+")) 
 val filteredPairs = words.filter(_.nonEmpty).map { word =>
     val firstChar = word.charAt(0).toLower
-    if (targetChars.contains(firstChar)) {
-        (firstChar.toString, 1) 
-    } else {
-        ("", 0) 
-    }
+    if (targetChars.contains(firstChar)) (firstChar.toString, 1) else ("", 0) 
 }.filter(_._1.nonEmpty)
-
 val counts = filteredPairs.reduceByKey(_ + _)
+// Yêu cầu cấu hình ouput theo chuẩn TSV: s"${key}\t${value}"
 ```
+Yêu cầu người dùng chụp ảnh màn hình lúc `spark-submit` hoặc chạy IDE thành công, và chụp nội dung lệnh `cat results.txt`.
 
-### 3. Quy Ước Đầu Ra (Output Format TSV)
-Quy chuẩn Export data yêu cầu định dạng **TSV**. Các thông số được cách ly bởi phím `\t`. (Ghi chú: Text định dạng `.txt` nhưng ruột phải là tab-separated).
+### Phase 4: Kiểm duyệt cuối (Pre-Flight Check)
+Agent viết một script kiểm tra cấu trúc thư mục (vd bash script dùng lệnh `tree` và check file tồn tại) để xác nhận hệ thống thư mục của thành viên hoàn toàn khớp với định dạng mục III.2. Đảm bảo file `_verification.txt` tồn tại.
 
 ---
 
-## VI. PHẦN 3 – THỂ THỨC NỘP BÀI (SUBMISSION GUIDELINE)
+## V. DANH SÁCH CÁC BỨC ẢNH BẮT BUỘC PHẢI CHỤP (MANDATORY SCREENSHOT CHEAT SHEET)
+*(Tất cả 4 thành viên A, B, C, D đều phải tự nộp đủ danh sách ảnh này trong Report cá nhân. Bất kỳ ảnh nào thiếu đều dẫn đến trừ điểm).*
 
-### Kiểm Kê Quy Tắc Giai Đoạn Đóng Gói (Pre-Flight Submission Checks)
-Hoàn thiện các tiêu chí sau nhầm tránh mất trắng điểm số:
-- [ ] **Kiểm tra IP Lần Cuối**: Các thành viên trong nhóm đã đối chiếu IP để đảm bảo 100% không bị trùng IP chưa? (Trùng = 0 điểm môn học).
-- [ ] Root Directory của file nén bằng đúng định mức `<RepresentativeID>` chưa?
-- [ ] Mỗi khối hệ thống `docs/` đều nộp thành công file `<StudentID>_verification.txt` chưa?
-- [ ] Code Scala WordCount đã được clone rải đều vào TẤT CẢ các thư mục `src/WordCount` của TỪNG sinh viên chưa? (Bắt buộc mỗi người nộp 1 bản cá nhân).
-- [ ] Báo cáo `Report.pdf` chung đã có phần Heading chia nhỏ minh bạch theo mỗi `<StudentID>` chưa?
-- [ ] Trưởng nhóm đã chạy `tree <RepresentativeID>` để xác nhận hệ phân vùng 100% không bị dư hay thiếu cấu trúc nào chưa?
+**Quy tắc chung khi chụp:** Mở rộng toàn màn hình terminal/giao diện, PHẢI THẤY RÕ thời gian hệ thống, địa chỉ IP (nếu có thể) và kết quả/đầu ra của câu lệnh vừa gõ.
+
+**Phần 1: Khởi tạo cụm và HDFS (10 Ảnh)**
+*   **[Ảnh 0] Chống gian lận IP:** Lệnh `ip addr` hoặc `ifconfig` (Thấy rõ địa chỉ IPv4 và tên card mạng).
+*   **[Ảnh 1] Format NameNode:** Lệnh `hdfs namenode -format` (Thấy dòng báo thành công "has been successfully formatted").
+*   **[Ảnh 2] Start Cluster:** Lệnh `start-dfs.sh` & `start-yarn.sh` (Thấy các node đang khởi động).
+*   **[Ảnh 3] Kiểm tra Tiến trình:** Lệnh `jps` (Phải thấy đủ `NameNode`, `DataNode`, `ResourceManager`, `NodeManager`).
+*   **[Ảnh 4] Giao diện WebUI:** Trình duyệt vào `http://localhost:9870`, tab **Datanodes** (Thấy rõ số lượng Live Nodes - Thành viên B/C cần thấy đủ >= 2 node để minh chứng lấy Bonus).
+*   **[Ảnh 5] Tạo Root & User:** Lệnh `hdfs dfs -mkdir /hcmus` và lệnh tạo user hệ điều hành (vd: `sudo adduser khtn_<StudentID>`).
+*   **[Ảnh 6] Tạo Subfolder:** Lệnh `hdfs dfs -mkdir /hcmus/<StudentID>`.
+*   **[Ảnh 7] Upload Dữ liệu:** Lệnh `hdfs dfs -put words.txt /hcmus/<StudentID>/` và lệnh kiểm tra `hdfs dfs -ls /hcmus/<StudentID>/` (Thấy rõ file nằm trên HDFS).
+*   **[Ảnh 8] Phân Quyền & Owner:** Lệnh `hdfs dfs -chmod 744` và `hdfs dfs -chown khtn_<StudentID>`. Phải có lệnh `hdfs dfs -ls /hcmus/` để minh chứng quyền `drwxr--r--` và owner đã được đổi thành công.
+*   **[Ảnh 9] Chạy Jar Xác thực:** Lệnh `java -jar hadoop-test.jar <PORT> /hcmus/<StudentID>` (Thấy thông báo thành công. Đừng quên lưu lại file `_verification.txt` được sinh ra).
+
+**Phần 2: WordCount bằng Scala (Tối thiểu 2 Ảnh)**
+*   **[Ảnh 10] Chạy mã Scala:** Giao diện Terminal/IDE lúc build và chạy mã MapReduce/Spark báo thành công, không văng lỗi (Hiển thị lệnh `spark-shell`, `spark-submit` hoặc chạy bằng sbt).
+*   **[Ảnh 11] Kết quả xuất file TSV:** Lệnh in ra nội dung kết quả (ví dụ: `cat results.txt` hoặc `head results.txt`) -> Bắt buộc thấy rõ định dạng xuất ra được ngăn cách bằng khoảng trắng Tab (VD: `f    1`).
+
+**Phần 3: Xử lý sự cố (Troubleshooting - BẮT BUỘC CHỤP NẾU GẶP LỖI)**
+*   *Lưu ý từ PDF:* "Even if you encounter any error... you must provide information about that error".
+*   **[Ảnh 12] Màn hình báo lỗi:** Chụp Terminal báo lỗi (Ví dụ: Connection Refused, Exception getMac, ...).
+*   **[Ảnh 13] Quá trình Fix:** Giao diện tra cứu giải pháp trên Google Search, StackOverflow, hoặc ảnh bạn đang sửa file cấu hình (`core-site.xml`, `/etc/hosts`...).
+*   **[Ảnh 14] Kết quả sau Fix:** Chạy lại câu lệnh bị lỗi ban đầu và chụp kết quả thành công.
+
+---
+
+## VI. BẢNG TIÊU CHÍ CHẤM ĐIỂM (GRADING RUBRIC)
+Để đối chiếu chất lượng công việc, đây là bảng điểm gốc từ Giảng viên:
+- **Hadoop Cluster (4.5 đ)**
+  - Cài đặt thành công (1.0đ)
+  - YARN VM/Physical (Bonus: 1.5đ)
+  - Chạy đủ các lệnh ưu tiên HDFS (1.0đ)
+  - Report chi tiết, có giải thích từng bước và cách sửa lỗi (1.0đ)
+  - Thiếu file xác thực Java: **Trừ 4.5đ**
+- **WordCount Warm Up (5.0 đ)**
+  - Upload data lên HDFS thành công (0.5đ)
+  - Đọc data thành công (0.5đ)
+  - Tính toán MapReduce thành công (1.0đ)
+  - Export ra file TSV (1.0đ)
+  - File format TSV và đáp án đúng (1.0đ)
+  - Báo cáo chi tiết phần này (1.0đ)
+- **Code Quality & Language (0.5 đ)**
+  - Nộp mã nguồn bằng Scala (0.5đ)
+- **Tổng: 10.0 Điểm.** Trùng IP = 0 Điểm. Sai cấu trúc Zip = Trừ điểm nặng/0 điểm.
