@@ -284,7 +284,7 @@ Thành viên **D** không phụ trách riêng một cụm Fully-distributed. Tha
 
 | STT | Nội dung | Lệnh / Giao diện |
 | :---: | :--- | :--- |
-| 0.1 | Khởi tạo công cụ | Màn hình cài đặt thành công Java/Scala (Ví dụ: lệnh `pacman`, `apt`) |
+| 0.1 | Khởi tạo công cụ | Màn hình cài đặt thành công Java và Scala (sử dụng trình quản lý gói của hệ điều hành như `apt`, `yum`, `pacman` hoặc tải trực tiếp) |
 | 0.2 | Tải và giải nén nền tảng | Kết quả dòng lệnh `wget` hoặc minh chứng đã tải về và giải nén (`tar`) thành công thư mục Hadoop |
 | 0.3 | Cấu hình biến môi trường (`PATH`) | Mở tệp `~/.bashrc` hoặc mục System Variables trên Windows hiển thị trỏ đường dẫn `JAVA_HOME` và `HADOOP_HOME` |
 | 0.4 | Cấu hình tham số lõi XML | Cú pháp in tệp tin (`cat`) cấu hình `core-site.xml` và `hdfs-site.xml` của Hadoop |
@@ -293,7 +293,7 @@ Thành viên **D** không phụ trách riêng một cụm Fully-distributed. Tha
 | 2 | Khởi động cluster | `start-dfs.sh` và `start-yarn.sh` |
 | 3 | Kiểm tra tiến trình | `jps` (đủ NameNode, DataNode, ResourceManager, NodeManager) |
 | 4 | WebUI | `http://localhost:9870` — tab Datanodes |
-| 5 | Tạo thư mục gốc và user | `hdfs dfs -mkdir /hcmus` + `sudo adduser khtn_<StudentID>` |
+| 5 | Tạo thư mục gốc và user | `hdfs dfs -mkdir /hcmus` + lệnh tạo user (`sudo adduser` hoặc `sudo useradd -m`) `khtn_<StudentID>` |
 | 6 | Tạo thư mục con | `hdfs dfs -mkdir /hcmus/<StudentID>` |
 | 7 | Tải dữ liệu lên HDFS | `hdfs dfs -put` + `hdfs dfs -ls` để xác nhận |
 | 8 | Phân quyền và chuyển owner | `hdfs dfs -chmod 744` + `hdfs dfs -chown` + `hdfs dfs -ls` |
