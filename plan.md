@@ -23,7 +23,12 @@
 
 Toàn bộ 4 thành viên phải tự cài đặt cụm **Pseudo-distributed** trên môi trường cá nhân (có IP riêng biệt) và hoàn thành các tác vụ sau:
 
-- **Cài đặt Hadoop:** Khởi tạo NameNode, DataNode, ResourceManager, NodeManager.
+- **Chuẩn bị và cài đặt khối nhân Hadoop (Pseudo-distributed):**
+  - Cài đặt Java (Khuyến nghị bản 8/11) và công cụ Scala.
+  - Tải gói phát hành lõi Hadoop qua `wget`/trình duyệt web, thực hiện giải nén.
+  - Định hình môi trường (`JAVA_HOME`, `HADOOP_HOME`, biến `PATH`) trên hệ điều hành.
+  - Sửa đổi cấu hình XML (`core-site.xml`, `hdfs-site.xml`) đáp ứng chuẩn Pseudo-distributed.
+  - Khởi tạo tiến trình chức năng (NameNode, DataNode, ResourceManager, NodeManager).
 - **Thao tác HDFS và phân quyền:**
   - Tạo thư mục gốc: `hdfs dfs -mkdir /hcmus`
   - Tạo tài khoản Linux nội bộ: `khtn_<StudentID>`
@@ -275,12 +280,16 @@ Thành viên **D** không phụ trách riêng một cụm Fully-distributed. Tha
 > Tất cả 4 thành viên đều phải nộp đủ danh sách ảnh này trong Report cá nhân.
 > Quy tắc chung: mở toàn màn hình, hiển thị rõ thời gian hệ thống, địa chỉ IP và kết quả lệnh.
 
-**Phần 1: Khởi tạo cụm và HDFS (10 ảnh)**
+**Phần 1: Chuẩn bị hệ thống và Khởi tạo HDFS (Bổ sung quy chuẩn "Chụp toàn bộ quy trình")**
 
 | STT | Nội dung | Lệnh / Giao diện |
 | :---: | :--- | :--- |
-| 0 | Minh chứng IP | `ip addr` hoặc `ifconfig` |
-| 1 | Format NameNode | `hdfs namenode -format` (thấy "successfully formatted") |
+| 0.1 | Khởi tạo công cụ | Màn hình cài đặt thành công Java/Scala (Ví dụ: lệnh `pacman`, `apt`) |
+| 0.2 | Tải và giải nén nền tảng | Kết quả dòng lệnh `wget` hoặc minh chứng đã tải về và giải nén (`tar`) thành công thư mục Hadoop |
+| 0.3 | Cấu hình biến môi trường (`PATH`) | Mở tệp `~/.bashrc` hoặc mục System Variables trên Windows hiển thị trỏ đường dẫn `JAVA_HOME` và `HADOOP_HOME` |
+| 0.4 | Cấu hình tham số lõi XML | Cú pháp in tệp tin (`cat`) cấu hình `core-site.xml` và `hdfs-site.xml` của Hadoop |
+| 0.5 | Minh chứng IP định tuyến | Lệnh kiểm tra thẻ mạng `ip addr` hoặc `ifconfig` |
+| 1 | Format NameNode | Lệnh `hdfs namenode -format` (thấy "successfully formatted") |
 | 2 | Khởi động cluster | `start-dfs.sh` và `start-yarn.sh` |
 | 3 | Kiểm tra tiến trình | `jps` (đủ NameNode, DataNode, ResourceManager, NodeManager) |
 | 4 | WebUI | `http://localhost:9870` — tab Datanodes |
