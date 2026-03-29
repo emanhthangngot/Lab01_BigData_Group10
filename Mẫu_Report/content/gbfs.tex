@@ -1,0 +1,51 @@
+\subsection{Greedy Best First Search (GBFS)}
+
+\textbf{Ý tưởng:} GBFS là một chiến lược tìm kiếm thuộc nhóm \textbf{Informed-Search}, hướng tới mục tiêu bằng cách luôn chọn mở rộng nút \textbf{có vẻ gần đích nhất} theo một hàm ước lượng heuristic $h(n)$. GBFS \textbf{chỉ quan tâm đến chi phí ước tính còn lại} đến mục tiêu. \cite{russell2021}
+
+\textbf{Cấu trúc dữ liệu:} \texttt{priority queue} (min-heap), ánh xạ \texttt{visited[node] = parent}, hàm heuristic \texttt{h(n)}.
+
+\textbf{Cơ chế thực hiện:}
+\begin{itemize}
+    \item GBFS mở rộng nút $n$ có giá trị \textbf{heuristic nhỏ nhất} trong hàng đợi ưu tiên (priority queue).  
+    \item Hàm đánh giá sử dụng là:
+    \[
+        f(n) = h(n)
+    \]
+    trong đó:
+    \begin{itemize}
+        \item $h(n)$ là \textbf{ước tính chi phí nhỏ nhất} từ nút $n$ đến mục tiêu. Tại đây, $h(n)$ trả về giá trị trọng số giữa đỉnh đang xét tới láng giềng của nó, trọng số càng nhỏ, $h(n)$ càng nhỏ, láng giềng có $h(n)$ nhỏ nhất sẽ được thêm vào frontier:
+        \[
+        h(n) = weight[n][neighbor] = matrix[n][neighbor]
+        \]
+        \item Không xét đến chi phí thực tế $g(n)$ (chi phí từ gốc đến $n$).
+    \end{itemize}
+    \item Ở mỗi bước, GBFS chọn nút có $h(n)$ nhỏ nhất để mở rộng, sinh ra các nút con và tính giá trị heuristic mới cho chúng.
+    \item Kiểm tra mục tiêu được thực hiện khi một nút được chọn để mở rộng.
+    \item Quá trình kết thúc khi tìm thấy trạng thái mục tiêu hoặc hàng đợi rỗng (không còn trạng thái có thể mở rộng).
+\end{itemize}
+
+\textbf{Ghi chú triển khai:}
+\begin{itemize}
+    \item GBFS sử dụng \textbf{priority queue (min-heap)} để lưu các nút theo giá trị $h(n)$ tăng dần.
+    \item Nếu có nhiều nút cùng giá trị $h(n)$, thuật toán có thể áp dụng \textbf{tie-break rule}.
+    \item Hiệu quả của GBFS phụ thuộc mạnh vào chất lượng của \textbf{hàm heuristic}: 
+    \begin{itemize}
+        \item Nếu $h(n)$ gần với chi phí thật, GBFS tìm đích rất nhanh.
+        \item Nếu $h(n)$ sai lệch, thuật toán có thể đi lạc hướng hoặc quay lui nhiều lần.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Đánh giá Hiệu suất:}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ (Completeness):} Có, nếu không gian trạng thái hữu hạn (finite graph search).
+    \item \textbf{Tính tối ưu (Optimality):} Không, vì GBFS có thể bỏ qua lời giải tối ưu khi heuristic đánh giá sai hướng.
+    \item \textbf{Độ phức tạp thời gian (Time Complexity):} $O(|V|)$, 
+    trong đó $|V|$ là số đỉnh của đồ thị trong trường hợp xấu nhất. Tuy nhiên, với một hàm heuristic tốt, 
+    số lượng nút mở rộng có thể giảm đáng kể; trong một số bài toán, độ phức tạp thực tế đạt khoảng $O(bm)$, với $b$ là hệ số phân nhánh và $m$ là độ sâu của lời giải.
+    \item \textbf{Độ phức tạp không gian (Space Complexity):}  $O(|V|)$, vì GBFS cần lưu tất cả các nút đã sinh ra trong hàng đợi ưu tiên (frontier) để tránh lặp lại.
+    \item \textbf{Nhận xét:}
+    \begin{itemize}
+        \item Do không xét $g(n)$, GBFS có thể chọn đường “ngắn trước mắt” nhưng “tốn kém tổng thể”.
+        \item GBFS thường chạy nhanh hơn BFS và UCS trong các bài toán có không gian lớn, nhưng không đảm bảo tối ưu — do đó nó thích hợp cho các bài toán cần \textbf{tìm nhanh một lời giải chấp nhận được} thay vì lời giải tối ưu.
+    \end{itemize}
+\end{itemize}

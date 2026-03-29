@@ -1,0 +1,82 @@
+\subsection{Astar Search (A*)}
+
+\textbf{Ý tưởng:}
+\begin{itemize}
+    \item GBFS \textbf{chỉ xét chi phí ước tính còn lại} $h(n)$ mà bỏ qua chi phí đã đi $g(n)$, nên nó hướng tìm kiếm mạnh mẽ về phía mục tiêu nhưng có thể bỏ qua đường đi tối ưu.
+    \item Do đó \textbf{A* (A-star)} kết hợp giữa chiến lược tìm kiếm chi phí đồng nhất (Uniform-Cost Search – UCS) và tìm kiếm tham lam (Greedy Best-First Search – GBFS) để tìm đường đi tốt nhất kết hợp cả thực tế và kinh nghiệm.
+    \item Mục tiêu của A* là cân bằng giữa:
+    \begin{itemize}
+        \item \textbf{Chi phí đã đi} từ nút gốc đến nút hiện tại $g(n)$.
+        \item \textbf{Chi phí ước tính còn lại} từ nút hiện tại đến mục tiêu $h(n)$.
+    \end{itemize}
+    \item Hàm đánh giá tổng hợp:
+    \[
+        f(n) = g(n) + h(n)
+    \]
+    Trong đó:
+    \begin{itemize}
+        \item $g(n)$: chi phí thực tế đã đi từ gốc đến $n$.
+        \item $h(n)$: ước lượng chi phí từ $n$ đến đích (heuristic function). Trong bài toán này, hàm heuristic $h(n)$ được lựa chọn là \textbf{khoảng cách Euclid} giữa vị trí của đỉnh hiện tại và vị trí của đích (goal):
+        \[
+        h(n) = \text{Euclidean\_distance}(pos[n], pos[\text{Goal}]) = 
+        \sqrt{(x_n - x_g)^2 + (y_n - y_g)^2}
+        \]
+        \item $f(n)$: ước lượng chi phí nhỏ nhất của lời giải đi qua $n$.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Cấu trúc dữ liệu:} 
+\texttt{priority queue} (min-heap), bảng \texttt{g[node]}, ánh xạ \texttt{visited[node] = parent}, hàm heuristic \texttt{h(n)}.
+
+\textbf{Cơ chế thực hiện:}
+\begin{itemize}
+    \item Khởi tạo nút gốc với $g(start) = 0$ và tính $f(start) = g(start) + h(start)$.
+    \item Đưa nút gốc vào hàng đợi ưu tiên, sắp xếp theo giá trị $f(n)$ tăng dần.
+    \item Trong mỗi bước lặp:
+    \begin{enumerate}
+        \item Lấy nút $n$ có giá trị $f(n)$ nhỏ nhất ra khỏi hàng đợi.
+        \item Nếu $n$ là mục tiêu, thuật toán dừng và truy vết đường đi bằng ánh xạ \texttt{visited[node] = parent}.
+        \item Với mỗi nút con $n'$ của $n$:
+        \begin{itemize}
+            \item Tính chi phí $g'(n') = g(n) + cost(n, n')$.
+            \item Nếu $n'$ chưa được thăm hoặc $g'(n') < g(n')$ cũ:
+            \begin{itemize}
+                \item Cập nhật $g(n') = g'(n')$.
+                \item Tính lại $f(n') = g(n') + h(n')$.
+                \item Cập nhật ánh xạ \texttt{visited[n'] = n}.
+                \item Thêm $n'$ vào hàng đợi ưu tiên.
+            \end{itemize}
+        \end{itemize}
+    \end{enumerate}
+    \item Lặp lại cho đến khi tìm được mục tiêu hoặc hàng đợi rỗng.
+\end{itemize}
+
+\textbf{Ghi chú triển khai:}
+\begin{itemize}
+    \item A* mở rộng nút có giá trị $f(n)$ nhỏ nhất — thể hiện sự cân bằng giữa chi phí thực và ước lượng còn lại.
+    \item Nếu $h(n) = 0$ với mọi nút, A* tương đương với UCS.  
+      Nếu $g(n)$ bị bỏ qua, A* trở thành GBFS.
+    \item Khi có nhiều nút có cùng $f(n)$, có thể áp dụng \textbf{tie-break rule} ưu tiên nút có chỉ số lớn hơn để nhất quán thứ tự mở rộng.
+    \item Cần chọn hàm heuristic phù hợp \cite{lecture2025}:
+    \begin{itemize}
+        \item \textbf{Admissible} (khả chấp): không bao giờ đánh giá quá thấp chi phí thực — đảm bảo tối ưu khi tìm kiếm cây.
+        \item \textbf{Consistent} (nhất quán): thỏa mãn bất đẳng thức tam giác  
+        $h(n) \leq cost(n, n') + h(n')$ — đảm bảo tối ưu khi tìm kiếm đồ thị.
+    \end{itemize}
+\end{itemize}
+
+\textbf{Đánh giá Hiệu suất:} \cite{russell2021}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ (Completeness):} Có, nếu hệ số nhánh $b$ hữu hạn và chi phí cạnh thấp nhất $\varepsilon > 0$.
+    \item \textbf{Tính tối ưu (Optimality):} Có, nếu $h(n)$ là heuristic khả chấp (admissible) 
+    hoặc nhất quán (consistent) tùy theo loại tìm kiếm.
+    \item \textbf{Độ phức tạp thời gian (Time Complexity):} Trong trường hợp xấu nhất là $O(b^d)$, 
+    nhưng thực tế phụ thuộc vào độ chính xác của $h(n)$ — heuristic càng tốt thì số nút mở rộng càng ít.
+    \item \textbf{Độ phức tạp không gian (Space Complexity):} $O(b^d)$, 
+    vì cần lưu toàn bộ các nút đã sinh trong hàng đợi ưu tiên.
+    \item \textbf{Nhận xét:} 
+    \begin{itemize}
+        \item A* là thuật toán \textbf{hiệu quả tối ưu (optimally efficient)} trong số các thuật toán sử dụng cùng heuristic nhất quán.  
+        \item Không có thuật toán nào khác mở rộng ít nút hơn A* mà vẫn đảm bảo tối ưu.
+    \end{itemize}
+\end{itemize}

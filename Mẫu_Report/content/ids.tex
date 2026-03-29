@@ -1,0 +1,55 @@
+\subsection{Iterative Deepening Search (IDS)}
+
+\textbf{Ý tưởng: }
+
+Trong quá trình nghiên cứu các chiến lược tìm kiếm, hai thuật toán cơ bản là \textbf{Breadth-First Search (BFS)} và 
+\textbf{Depth-First Search (DFS)} thể hiện rõ sự đánh đổi giữa \textit{tính tối ưu} và \textit{hiệu quả bộ nhớ} \cite{russell2021}:
+
+\begin{itemize}
+    \item \textbf{BFS} bảo đảm tìm được lời giải ngắn nhất (tối ưu) nhưng đòi hỏi phải lưu toàn bộ các nút trong hàng đợi ở cùng độ sâu. 
+    Khi độ sâu của lời giải lớn, số lượng nút cần lưu trữ tăng theo cấp số nhân $O(b^d)$, dẫn đến \textbf{vấn đề tràn bộ nhớ}.
+    \item \textbf{DFS} sử dụng bộ nhớ tuyến tính $O(bd)$ nhờ chỉ lưu các nút trên một đường đi hiện tại, 
+    tuy nhiên nó có thể đi quá sâu trong không gian tìm kiếm và \textbf{bỏ qua lời giải nông hơn}, 
+    hoặc thậm chí \textbf{rơi vào vòng lặp vô hạn}.
+\end{itemize}
+
+Để khắc phục nhược điểm này, \textbf{thuật toán Tìm kiếm Sâu dần Lặp (Iterative Deepening Search – IDS)} được phát triển 
+dựa trên ý tưởng:
+\begin{quote}
+    “\textit{Duyệt không gian tìm kiếm theo chiều sâu giống DFS, nhưng theo thứ tự độ sâu tăng dần giống BFS.}”
+\end{quote}
+
+\textbf{Cấu trúc dữ liệu:} \texttt{stack}, biến giới hạn độ sâu \texttt{limit}, ánh xạ \texttt{visited[node] = parent}.
+
+\textbf{Cơ chế thực hiện:}
+\begin{itemize}
+    \item IDS hoạt động bằng cách \textbf{gọi lại thuật toán DLS (Depth-Limited Search)} nhiều lần với giới hạn độ sâu $l$ tăng dần:
+    \[
+        l = 0, 1, 2, 3, \dots
+    \]
+    \item Trong mỗi lần lặp, IDS tiến hành duyệt theo chiều sâu nhưng chỉ tới mức giới hạn $l$. Các nút ở độ sâu $l$ được xem như không có con kế thừa.
+    \item Sau khi hoàn thành một lượt tìm kiếm với giới hạn $l$, nếu mục tiêu chưa được tìm thấy, giới hạn được tăng lên $l+1$ và thuật toán khởi chạy lại từ nút gốc.
+    \item Khi giới hạn $l$ đạt đến độ sâu $d$ của nút mục tiêu nông nhất, IDS sẽ dừng và trả về lời giải.
+\end{itemize}
+
+\textbf{Ghi chú triển khai: }
+\begin{itemize}
+    \item Trong khi DLS chỉ thực hiện một lần tìm kiếm với giới hạn cố định $l$, IDS tăng dần $l$ để đảm bảo tìm thấy lời giải mà không cần biết trước độ sâu.
+\end{itemize}
+
+\textbf{Đánh giá Hiệu suất:}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ (Completeness):} Có, nếu hệ số nhánh $b$ là hữu hạn.
+    \item \textbf{Tính tối ưu (Optimality):} Có, nếu chi phí bước là đồng nhất (mỗi bước đi có cùng chi phí). Khi đó, IDS tìm được lời giải ngắn nhất, tương tự BFS.
+    \item \textbf{Độ phức tạp thời gian (Time Complexity):} $O(b^d)$, trong đó $d$ là độ sâu của lời giải nông nhất.  
+    Mặc dù các nút ở các tầng trên được sinh ra nhiều lần, tổng số nút mở rộng vẫn tương đương BFS \cite{russell2021}:
+    \[
+        (d+1)b^0 + db^1 + (d-1)b^2 + \dots + 1b^d = O(b^d)
+    \]
+    \item \textbf{Độ phức tạp không gian (Space Complexity):} $O(bd)$, tuyến tính theo độ sâu, giống DFS.
+    \item \textbf{Nhận xét:} 
+    \begin{itemize}
+        \item IDS được ưu tiên trong các bài toán có không gian tìm kiếm rất lớn hoặc khi độ sâu của lời giải chưa biết trước.
+        \item DFS là trường hợp đặc biệt của DLS khi $l = \infty$, còn IDS chính là chuỗi các lần DLS tăng dần giới hạn.
+    \end{itemize}
+\end{itemize}

@@ -1,0 +1,25 @@
+\subsection{Breadth First Search (BFS)}
+\textbf{Ý tưởng:} Thuật toán duyệt đồ thị thuộc nhóm \textbf{Uninformed-Search} theo từng “lớp” độ sâu, tức là các đỉnh được duyệt bắt đầu từ \textbf{Start} lan truyền theo chiều rộng của một độ sâu cho đến khi tìm đến được \textbf{Goal} thì kết thúc trong trường hợp tìm thấy đường đi. Do đó hàng đợi \textbf{FIFO} được sử dụng. Mỗi đỉnh được thăm đúng một lần, và các đỉnh kề được đưa vào cuối hàng đợi.
+
+\textbf{Cấu trúc dữ liệu:} \texttt{queue}, ánh xạ \texttt{visited[node] = parent}. 
+
+\textbf{Cơ chế thực hiện:} \cite{lecture2025}
+\begin{itemize}
+    \item BFS mở rộng nút nông nhất chưa được mở rộng.
+    \item Nó mở rộng nút gốc trước, sau đó là tất cả các nút kế tiếp của nút gốc, rồi đến các nút kế tiếp của chúng, và cứ thế tiếp tục.
+    \item Tất cả các nút ở cùng một độ sâu sẽ được mở rộng trước khi chuyển sang cấp độ sâu hơn.
+    \item BFS sử dụng hàng đợi FIFO (First-In, First-Out) cho tập hợp biên (frontier).
+    \item Kiểm tra mục tiêu được áp dụng khi nút được lấy ra từ Frontier.
+\end{itemize}
+
+\textbf{Ghi chú triển khai:} Láng giềng được sắp xếp giảm dần trước khi enqueue để tuân thủ quy tắc “ưu tiên nhánh phải”.
+
+\textbf{Đánh giá hiệu suất:} \cite{lecture2025}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ:} Có, nếu hệ số nhánh $b$ là hữu hạn.
+    \item \textbf{Tính tối ưu:} Có, nếu chi phí bước bằng nhau.
+    \item \textbf{Độ phức tạp thời gian:} $O(b^d)$, với $d$ là độ sâu của lời giải nông nhất.
+    \item \textbf{Độ phức tạp không gian:} $O(b^d)$, vì phải giữ lại toàn bộ cấp độ cuối cùng trong bộ nhớ.
+    \item \textbf{Nhận xét:} Yêu cầu về bộ nhớ là vấn đề lớn hơn đối với BFS so với thời gian thực thi. Vì vậy BFS chỉ nên được sử dụng trên không gian giới hạn nhỏ.
+\end{itemize}
+

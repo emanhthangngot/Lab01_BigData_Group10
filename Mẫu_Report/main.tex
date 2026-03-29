@@ -1,0 +1,99 @@
+\documentclass[12pt]{article}
+
+\usepackage{hcmus-report-template}
+
+% Disable indentation on new paragraphs
+\setlength{\parindent}{0pt}
+
+% Line spacing 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+% Optional: graphic path
+%\graphicspath{PATH_TO_GRAPHIC_FOLDER}
+
+% To use Times font family, uncomment this row
+% \usepackage{mathptmx}
+
+% To use roman section / subsection, uncomment these rows
+%\renewcommand{\thesection}{\Roman{section}}
+%\renewcommand{\thesubsection}{\thesection.\Roman{subsection}}
+
+% Define course name, report name and report title.
+\newcommand{\coursename}{Cơ sở Trí tuệ nhân tạo}
+\newcommand{\reportname}{Graph Search Algorithms}
+\newcommand{\reporttitle}{BÁO CÁO ĐỒ ÁN}
+
+\newcommand{\studentname}{23120208 - Dương Tuấn Anh}
+\newcommand{\teachername}{Thầy Bùi Duy Đăng \\ Cô Nguyễn Thị Thu Hằng}
+
+% Header
+\lhead{\reporttitle}
+\rhead{
+Trường Đại học Khoa học Tự nhiên - ĐHQG HCM\\
+\coursename
+}
+
+% Footer
+%\newcommand{\leftfooter}{\LaTeX\ by \href{https://github.com/trhgquan}{Quan, Tran Hoang}}
+%\lfoot{\leftfooter}
+
+% ============ DOCUMENT ============
+\begin{document}
+
+\pagenumbering{roman}
+\input{content/title.tex}
+
+\tableofcontents
+\pagebreak
+\listoftables
+\pagebreak
+\listoffigures
+\pagebreak
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+%\input{content/section}
+%\input{content/hinhanh}
+%\input{content/bangbieu}
+%\input{content/congthuctoan}
+%\input{content/thuattoan}
+%\input{content/code}
+%\input{content/ngonngu}
+%\input{content/cite}
+
+\input{content/introduction}
+\input{content/accessment}
+
+\newpage
+\input{content/theory}
+
+\newpage
+\input{content/comparison}
+
+\newpage
+\input{content/explanation}
+
+% References
+%\input{ref/ref.tex}
+
+\begin{thebibliography}{9}
+
+\bibitem{russell2021}
+Stuart Russell and Peter Norvig,
+\textit{Artificial Intelligence: A Modern Approach, Fourth Edition}.
+Pearson, 2021.
+(Chương 3: Solving Problems by Searching).
+
+\bibitem{lecture2025}
+Bùi Duy Đăng,
+\textit{Bài giảng: Uninformed Search \& Informed Search}.
+Khoa Công nghệ Thông tin, Trường Đại học Khoa học Tự nhiên, ĐHQG-HCM, 2025.
+
+\end{thebibliography}
+
+% Appendix
+%\appendix
+% Add \cleardoublepage to move appendices to next page.
+%\input{appendix/appendix.tex}
+\end{document}

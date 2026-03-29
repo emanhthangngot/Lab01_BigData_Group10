@@ -1,28 +1,50 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[12pt]{article}
 
-% --- Ngôn ngữ & Font ---
-\usepackage{fontspec}
-\usepackage{polyglossia}
-\setdefaultlanguage{vietnamese}
-\setmainfont{Times New Roman}
-\setmonofont{JetBrains Mono}[Scale=0.85]
+\usepackage{hcmus-report-template}
 
-% --- Layout ---
-\usepackage[margin=2.5cm]{geometry}
-\usepackage{setspace}
-\setstretch{1.25}
+% Disable indentation on new paragraphs
+\setlength{\parindent}{0pt}
 
-% --- Hình ảnh ---
-\usepackage{graphicx}
+% Line spacing 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+% Optional: graphic path
+%\graphicspath{PATH_TO_GRAPHIC_FOLDER}
+
+% To use Times font family, uncomment this row
+% \usepackage{mathptmx}
+
+% To use roman section / subsection, uncomment these rows
+%\renewcommand{\thesection}{\Roman{section}}
+%\renewcommand{\thesubsection}{\thesection.\Roman{subsection}}
+
+% Define course name, report name and report title.
+\newcommand{\coursename}{Cơ sở Trí tuệ nhân tạo}
+\newcommand{\reportname}{Graph Search Algorithms}
+\newcommand{\reporttitle}{BÁO CÁO ĐỒ ÁN}
+
+\newcommand{\studentname}{23120208 - Dương Tuấn Anh}
+\newcommand{\teachername}{Thầy Bùi Duy Đăng \\ Cô Nguyễn Thị Thu Hằng}
+
+% Header
+\lhead{\reporttitle}
+\rhead{
+Trường Đại học Khoa học Tự nhiên - ĐHQG HCM\\
+\coursename
+}
+
+% Footer
+%\newcommand{\leftfooter}{\LaTeX\ by \href{https://github.com/trhgquan}{Quan, Tran Hoang}}
+%\lfoot{\leftfooter}
+
+% ============ DOCUMENT ============
+
+% --- Extra packages from report.tex ---
 \usepackage{float}
 \graphicspath{{image/}}
-
-% --- Bảng ---
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{longtable}
-
-% --- Code ---
 \usepackage{xcolor}
 \definecolor{codebg}{RGB}{245,245,245}
 \usepackage{minted}
@@ -34,54 +56,25 @@
   frame=single,
   framesep=2mm,
 }
-
-% --- Tiện ích ---
-\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue]{hyperref}
 \usepackage{enumitem}
-\usepackage{fancyhdr}
 \usepackage{titlesec}
 \usepackage{caption}
 \usepackage{needspace}
 
-% --- Heading Sizes ---
-\titleformat{\section}{\fontsize{16pt}{19pt}\selectfont\bfseries}{PHẦN \thesection:~}{0em}{}
-\titleformat{\subsection}{\fontsize{14pt}{17pt}\selectfont\bfseries}{\thesubsection.~}{0em}{}
-\titleformat{\subsubsection}{\fontsize{13pt}{16pt}\selectfont\bfseries\itshape}{\thesubsubsection.~}{0em}{}
-
 \begin{document}
 
-% ============================================================
-% TRANG BÌA
-% ============================================================
-\begin{titlepage}
-  \centering
-  \thispagestyle{empty}
-  {\large ĐẠI HỌC QUỐC GIA TP.HCM}\\[0.2cm]
-  {\large TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}\\[1cm]
-  {\Large\bfseries NHẬP MÔN DỮ LIỆU LỚN}\\[0.5cm]
-  \rule{\textwidth}{0.4pt}\\[1cm]
-  {\LARGE\bfseries BÁO CÁO LAB 01}\\[0.3cm]
-  {\Large Giới thiệu Hệ sinh thái Hadoop}\\[2cm]
-  \begin{tabular}{ll}
-    \textbf{Họ và Tên:}      & Lê Xuân Trí \\[0.3cm]
-    \textbf{MSSV:}            & 23120099 \\[0.3cm]
-    \textbf{Hệ điều hành:}    & Arch Linux (native) \\[0.3cm]
-    \textbf{Vai trò nhóm:}    & Trưởng nhóm (Leader A) \\[0.3cm]
-    \textbf{Ngày nộp:}        & 30/03/2026 \\
-  \end{tabular}
-\end{titlepage}
+\pagenumbering{roman}
+\input{content/title.tex}
 
-% ============================================================
-% MỤC LỤC
-% ============================================================
-\newpage
 \tableofcontents
-\newpage
-\pagestyle{plain}
+\pagebreak
+\listoftables
+\pagebreak
+\listoffigures
+\pagebreak
 
-% ============================================================
-% PHẦN 1: CÀI ĐẶT HADOOP PSEUDO-DISTRIBUTED
-% ============================================================
+\pagenumbering{arabic}
+\setcounter{page}{1}
 \section{Cài đặt Hadoop Pseudo-Distributed}
 
 Phần này trình bày toàn bộ quá trình tôi cài đặt và cấu hình Hadoop 3.4.0 ở chế độ
@@ -106,8 +99,8 @@ uname -a
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{01-system-uname.png}
-  \caption{Kết quả lệnh \texttt{uname -a} hiển thị thông tin nhân và kiến trúc hệ thống}
+  \includegraphics[width=\textwidth]{08-ip-proof.png}
+  \caption{Xác minh địa chỉ IP của hệ thống phục vụ cấu hình Hadoop}
   \label{fig:ip-addr}
 \end{figure}
 
@@ -129,8 +122,9 @@ scala -version
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{02-java-scala-install.png}
-  \caption{Cài đặt Java và Scala thành công trên Arch Linux}
+  \includegraphics[width=0.48\textwidth]{01-java-install.png}
+  \includegraphics[width=0.48\textwidth]{02-scala-install.png}
+  \caption{Cài đặt Java SE 11 và Scala thành công}
   \label{fig:java-scala}
 \end{figure}
 
@@ -151,8 +145,9 @@ sudo chown -R $USER:$USER /opt/hadoop
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{03-hadoop-download.png}
-  \caption{Tải và giải nén Hadoop 3.4.0}
+  \includegraphics[width=0.48\textwidth]{03-hadoop-download.png}
+  \includegraphics[width=0.48\textwidth]{04-hadoop-list.png}
+  \caption{Tải và kiểm tra bộ cài Hadoop 3.4.0}
   \label{fig:hadoop-download}
 \end{figure}
 
@@ -175,8 +170,9 @@ export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{04-env-vars.png}
-  \caption{Cấu hình biến môi trường trong ~/.bashrc}
+  \includegraphics[width=0.48\textwidth]{05-env-vars.png}
+  \includegraphics[width=0.48\textwidth]{06-hadoop-env-config.png}
+  \caption{Cấu hình biến môi trường trong ~/.bashrc và hadoop-env.sh}
   \label{fig:env-vars}
 \end{figure}
 
@@ -223,7 +219,7 @@ của HDFS: \texttt{dfs.replication} được đặt bằng 1 vì chỉ có mộ
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{05-xml-config.png}
+  \includegraphics[width=\textwidth]{07-xml-config.png}
   \caption{Nội dung cấu hình core-site.xml và hdfs-site.xml}
   \label{fig:xml-config}
 \end{figure}
@@ -245,7 +241,7 @@ hdfs namenode -format
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{06-namenode-format.png}
+  \includegraphics[width=\textwidth]{09-namenode-format.png}
   \caption{Format NameNode thành công — thông báo successfully formatted}
   \label{fig:namenode-format}
 \end{figure}
@@ -268,8 +264,8 @@ start-yarn.sh
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{07-start-cluster.png}
-  \caption{Khởi động DFS và YARN thành công}
+  \includegraphics[width=\textwidth]{10-start-cluster-jps.png}
+  \caption{Khởi động DFS, YARN và kiểm tra tiến trình JPS}
   \label{fig:start-cluster}
 \end{figure}
 
@@ -337,7 +333,8 @@ hdfs dfs -mkdir /hcmus/23120099
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{10-hdfs-mkdir-user.png}
+  \includegraphics[width=0.48\textwidth]{12-hdfs-mkdir-user.png}
+  \includegraphics[width=0.48\textwidth]{13-hdfs-mkdir-sub.png}
   \caption{Tạo thư mục HDFS /hcmus/23120099 và user Linux khtn\_23120099}
   \label{fig:mkdir-user}
 \end{figure}
@@ -359,7 +356,7 @@ hdfs dfs -ls /hcmus/23120099/
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{11-hdfs-put-words.png}
+  \includegraphics[width=\textwidth]{14-hdfs-put-confirm.png}
   \caption{Tải file words.txt lên HDFS và xác nhận bằng lệnh ls}
   \label{fig:hdfs-put}
 \end{figure}
@@ -382,7 +379,7 @@ hdfs dfs -ls /hcmus/
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{12-chmod-chown.png}
+  \includegraphics[width=\textwidth]{15-hdfs-chmod-chown.png}
   \caption{Phân quyền chmod 744 và chuyển owner cho khtn\_23120099}
   \label{fig:chmod-chown}
 \end{figure}
@@ -411,8 +408,8 @@ MAC=14-5A-FC-90-C5-E7
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{13-jar-run.png}
-  \caption{Chạy hadoop-test.jar thành công}
+  \includegraphics[width=\textwidth]{16-jar-verification.png}
+  \caption{Chạy hadoop-test.jar và tạo file xác thực minh chứng thành công}
   \label{fig:jar-run}
 \end{figure}
 
@@ -424,51 +421,7 @@ MAC=14-5A-FC-90-C5-E7
 \end{figure}
 
 % ------------------------------------------------------------
-\subsection{Xử lý sự cố}
 
-Trong quá trình cài đặt và vận hành, tôi gặp phải một lỗi làm gián đoạn tiến trình.
-Dưới đây là mô tả chi tiết và cách khắc phục theo mô hình ba bước.
-
-\subsubsection*{Hiện tượng}
-
-Khi chạy lệnh \texttt{java -jar hadoop-test.jar}, chương trình báo lỗi dạng
-\texttt{Exception} liên quan đến việc không thể lấy địa chỉ MAC của giao diện mạng
-hoặc không thể kết nối đến NameNode qua cổng \texttt{9000}. Terminal hiển thị stack
-trace với thông báo \texttt{Connection refused} hoặc \texttt{getMac() failed}, khiến
-quá trình tạo file xác thực bị dừng lại giữa chừng.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{15-error-symptom.png}
-  \caption{Hiện tượng lỗi gặp phải trong quá trình cài đặt}
-  \label{fig:error}
-\end{figure}
-
-\subsubsection*{Phân tích}
-
-Sau khi kiểm tra lại các bước, tôi xác định có hai nguyên nhân tiềm năng: (1) Tiến
-trình NameNode chưa khởi động hoàn toàn hoặc đã bị dừng do lỗi trong file cấu hình,
-dẫn đến cổng \texttt{9000} chưa mở để lắng nghe kết nối; (2) Trên Arch Linux, giao
-diện mạng sử dụng tên theo chuẩn \texttt{systemd-networkd} (ví dụ \texttt{enp3s0}
-thay vì \texttt{eth0}) — điều này đôi khi khiến các chương trình Java cũ không
-nhận diện được giao diện mạng để lấy địa chỉ MAC. Cụ thể, khi kiểm tra lại bằng
-\texttt{jps}, tôi phát hiện DataNode không xuất hiện trong danh sách do xung đột
-giữa Cluster ID của NameNode mới format và ID cũ còn lưu trong thư mục
-\texttt{datanode}. Điều này cũng ngăn NameNode lắng nghe đúng cổng.
-
-\subsubsection*{Giải pháp}
-
-Tôi thực hiện các bước sau để khắc phục: xoá toàn bộ dữ liệu cũ trong thư mục
-\texttt{namenode} và \texttt{datanode}, format lại NameNode, sau đó khởi động lại
-toàn bộ cluster. Sau khi xác nhận đủ 4 daemon qua \texttt{jps} và NameNode WebUI
-hiển thị DataNode ở trạng thái Live, tôi chạy lại lệnh JAR xác thực thành công.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{16-error-fixed.png}
-  \caption{Kết quả sau khi sửa lỗi thành công}
-  \label{fig:error-fixed}
-\end{figure}
 
 % ============================================================
 % PHẦN 2: WORDCOUNT BẰNG SCALA
@@ -895,5 +848,6 @@ Kinh nghiệm thực hành qua bài lab này là bước đệm quan trọng đ�
 đề nâng cao hơn trong môn học, bao gồm tối ưu hóa job Spark, tuning cấu hình YARN,
 và tích hợp Hadoop với các hệ thống lưu trữ và xử lý hiện đại như Hive, HBase, và
 Kafka.
+
 
 \end{document}

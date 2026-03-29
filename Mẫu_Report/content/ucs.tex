@@ -1,0 +1,30 @@
+\subsection{Uniform-Cost Search (UCS)}
+
+\textbf{Ý tưởng:} \cite{russell2021} Thay vì mở rộng tự nhiên, không quan tâm chi phí như \textbf{BFS}, \textbf{UCS} là một phiên bản \textbf{Dijkstra} cho bài toán tìm kiếm, luôn mở rộng đỉnh có chi phí đường đi $g(n)$ thấp nhất bằng hàng đợi ưu tiên để tìm ra \textbf{đường đi có chi phí thấp nhất}.
+
+\textbf{Cấu trúc dữ liệu:} \texttt{priority queue} (min-heap), bảng \texttt{costs[n] = g(n)}.
+
+\textbf{Cơ chế thực hiện:}
+\begin{itemize}
+    \item UCS mở rộng nút $n$ có chi phí đường đi $g(n)$ thấp nhất.
+    \item Tương đương thuật toán Dijkstra.
+    \item Sử dụng hàng đợi ưu tiên (priority queue) sắp xếp theo $g$.
+    \item Kiểm tra mục tiêu khi nút được chọn để mở rộng.
+
+\end{itemize}
+
+\textbf{Ghi chú triển khai:} 
+\begin{itemize}
+    \item Mỗi lần cập nhật chi phí mới tốt hơn hoặc bằng với cha “bên phải” hơn thì push lại vào heap (không sửa trực tiếp phần tử cũ vì phần tử của \textbf{frontier} được cài là \textbf{imutable tuple}).
+    \item Sử dụng \textbf{tie-break rule $(-neighbor)$} để vẫn ưu tiên nhánh phải khi $g$ bằng nhau. Vì tính chất so sánh phần tử của \textbf{priority queue heapq} trong \textbf{python}, chúng ta cần đặt cơ chế tie-break như trên.
+\end{itemize}
+
+\textbf{Đánh giá hiệu suất:} \cite{russell2021}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ:} Có, nếu chi phí lời giải tốt nhất $C^*$ hữu hạn và chi phí cạnh nhỏ nhất $\epsilon > 0$.
+    \item \textbf{Tính tối ưu:} Có.
+    \item \textbf{Độ phức tạp thời gian:} $O(b^{1+\lfloor C^*/\epsilon \rfloor}) = O(|E| \log |V|)$ với heap nhị phân .
+    \item \textbf{Độ phức tạp không gian:} $O(b^{1+\lfloor C^*/\epsilon \rfloor})$.
+    \item \textbf{Nhận xét:} Nếu chi phí bước đều nhau, UCS tương đương BFS.
+\end{itemize}
+

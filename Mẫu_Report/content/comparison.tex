@@ -1,0 +1,23 @@
+\section{So sánh UCS và A*}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|p{4cm}|p{5cm}|p{5cm}|}
+\hline
+\textbf{Tiêu chí} & \textbf{Uniform-Cost Search} & \textbf{Astar Search} \\ \hline
+Loại thuật toán & Tìm kiếm không có thông tin (Uninformed) & Tìm kiếm có thông tin (Informed) \\ \hline
+Hàm đánh giá & $f(n) = g(n)$ & $f(n) = g(n) + h(n)$ \\ \hline
+Heuristic $h(n)$ & Không có ($h(n)=0$) & Có, ước lượng chi phí đến mục tiêu \\ \hline
+Chiến lược mở rộng & Mở rộng nút có chi phí thực $g(n)$ nhỏ nhất & Mở rộng nút có tổng $f(n)$ nhỏ nhất \\ \hline
+Tính đầy đủ & Có, nếu chi phí cạnh $>0$ & Có, nếu $b$ hữu hạn và $h$ nhất quán \\ \hline
+Tính tối ưu & Có & Có, nếu $h$ khả chấp (admissible) \\ \hline
+Độ phức tạp thời gian & $O(b^{1+\lfloor C^*/\varepsilon \rfloor})$ & Từ $O(b^d)$ đến tuyến tính (tùy heuristic) \\ \hline
+Độ phức tạp không gian & $O(b^{1+\lfloor C^*/\varepsilon \rfloor})$ & $O(b^d)$ \\ \hline
+Hiệu quả & Mở rộng nhiều nút (không định hướng) & Mở rộng ít nút hơn nếu $h$ tốt \\ \hline
+Quan hệ & Trường hợp đặc biệt của A* khi $h(n)=0$ & Mở rộng UCS bằng cách thêm heuristic \\ \hline
+Ưu điểm & Đơn giản, tối ưu, không cần heuristic & Tối ưu, nhanh hơn UCS khi có heuristic tốt \\ \hline
+Nhược điểm & Chậm, tốn bộ nhớ khi đồ thị lớn & Cần heuristic phù hợp, dễ lạc hướng nếu $h$ kém \\ \hline
+Ứng dụng & Dijkstra, tìm đường ngắn nhất có trọng số & Bản đồ, robot pathfinding, AI game \\ \hline
+\end{tabular}
+\caption{So sánh UCS và A*}
+\end{table}
