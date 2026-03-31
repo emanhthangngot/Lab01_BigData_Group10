@@ -8,23 +8,23 @@
 % Line spacing 1.5
 \renewcommand{\baselinestretch}{1.5}
 
-% Optional: graphic path
-%\graphicspath{PATH_TO_GRAPHIC_FOLDER}
+% Graphic path — trỏ vào thư mục img/
+\graphicspath{{img/}}
 
 % To use Times font family, uncomment this row
-% \usepackage{mathptmx}
+% \usepackage{mathptmainmx}
 
 % To use roman section / subsection, uncomment these rows
 %\renewcommand{\thesection}{\Roman{section}}
 %\renewcommand{\thesubsection}{\thesection.\Roman{subsection}}
 
 % Define course name, report name and report title.
-\newcommand{\coursename}{Cơ sở Trí tuệ nhân tạo}
-\newcommand{\reportname}{Graph Search Algorithms}
+\newcommand{\coursename}{Nhập môn Dữ liệu lớn}
+\newcommand{\reportname}{Lab 01: Hadoop Cluster \& WordCount}
 \newcommand{\reporttitle}{BÁO CÁO ĐỒ ÁN}
 
-\newcommand{\studentname}{23120208 - Dương Tuấn Anh}
-\newcommand{\teachername}{Thầy Bùi Duy Đăng \\ Cô Nguyễn Thị Thu Hằng}
+\newcommand{\studentname}{23120099 - Lê Xuân Trí}
+\newcommand{\teachername}{Thầy Trần Huy Bân}
 
 % Header
 \lhead{\reporttitle}
@@ -38,14 +38,80 @@ Trường Đại học Khoa học Tự nhiên - ĐHQG HCM\\
 %\lfoot{\leftfooter}
 
 % ============ DOCUMENT ============
+
+% --- Extra packages from report.tex ---
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{xcolor}
+\definecolor{codebg}{RGB}{245,245,245}
+\usepackage{minted}
+\usemintedstyle{friendly}
+\setminted{
+  bgcolor=codebg,
+  fontsize=\footnotesize,
+  breaklines=true,
+  frame=single,
+  framesep=2mm,
+}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{needspace}
+
 \begin{document}
 
 \pagenumbering{roman}
-\input{content/title.tex}
+
+% ============================================================
+% TRANG BÌA (inline từ content/title.tex)
+% ============================================================
+\begin{titlepage}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\centering
+
+\textsc{\LARGE đại học quốc gia tphcm}\\[0.5cm]
+\textsc{\Large trường đại học khoa học tự nhiên}\\[0.5cm]
+\textsc{\large khoa công nghệ thông tin}\\[0.4cm]
+
+\includegraphics[scale=.40]{hcmus-logo.png}\\[0.1cm] 
+
+\HRule \\[0.3cm]
+{ 
+\huge{\bfseries{\reporttitle}}\\[0.5cm]
+\large{\bfseries{Chủ đề: \reportname}}
+}\\[0.4cm]
+\HRule \\[0.5cm]
+
+
+
+\textbf{\large Môn học: \coursename}\\[0.5cm]
+
+\begin{minipage}[t]{0.4\textwidth}
+\begin{flushleft} \large
+\emph{Sinh viên thực hiện:}\\
+\studentname
+\end{flushleft}
+\end{minipage}
+~
+\begin{minipage}[t]{0.4\textwidth}
+\begin{flushright} \large
+\emph{Giảng viên hướng dẫn:} \\
+\teachername
+\end{flushright}
+\end{minipage}\\[1cm]
+
+{\large \today}\\[1cm]
+
+
+
+\vfill
+\end{titlepage}
 
 \tableofcontents
 \pagebreak
-\listoftables
+% \listoftables
 \pagebreak
 \listoffigures
 \pagebreak
@@ -53,47 +119,30 @@ Trường Đại học Khoa học Tự nhiên - ĐHQG HCM\\
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
-%\input{content/section}
-%\input{content/hinhanh}
-%\input{content/bangbieu}
-%\input{content/congthuctoan}
-%\input{content/thuattoan}
-%\input{content/code}
-%\input{content/ngonngu}
-%\input{content/cite}
+% ============================================================
+% PHẦN 1: CÀI ĐẶT HADOOP PSEUDO-DISTRIBUTED
+% ============================================================
+\input{content/01-hadoop-setup.tex}
 
-\input{content/introduction}
-\input{content/accessment}
+\clearpage
 
-\newpage
-\input{content/theory}
+% ============================================================
+% PHẦN 2: WORDCOUNT BẰNG SCALA
+% ============================================================
+\input{content/02-wordcount.tex}
 
-\newpage
-\input{content/comparison}
+\clearpage
 
-\newpage
-\input{content/explanation}
+% ============================================================
+% PHẦN 3: CÀI ĐẶT CỤM HADOOP FULLY-DISTRIBUTED
+% ============================================================
+\input{content/03-fully-distributed.tex}
 
-% References
-%\input{ref/ref.tex}
+\clearpage
 
-\begin{thebibliography}{9}
+% ============================================================
+% PHẦN 4: KẾT LUẬN
+% ============================================================
+\input{content/99-conclusion.tex}
 
-\bibitem{russell2021}
-Stuart Russell and Peter Norvig,
-\textit{Artificial Intelligence: A Modern Approach, Fourth Edition}.
-Pearson, 2021.
-(Chương 3: Solving Problems by Searching).
-
-\bibitem{lecture2025}
-Bùi Duy Đăng,
-\textit{Bài giảng: Uninformed Search \& Informed Search}.
-Khoa Công nghệ Thông tin, Trường Đại học Khoa học Tự nhiên, ĐHQG-HCM, 2025.
-
-\end{thebibliography}
-
-% Appendix
-%\appendix
-% Add \cleardoublepage to move appendices to next page.
-%\input{appendix/appendix.tex}
 \end{document}

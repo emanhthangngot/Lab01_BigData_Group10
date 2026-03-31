@@ -1,0 +1,239 @@
+\section{WordCount bằng Scala}
+
+% ------------------------------------------------------------
+\subsection{Giới thiệu bài toán}
+
+Bài toán WordCount yêu cầu đếm số lượng từ trong file \texttt{words.txt} theo chữ
+cái đầu tiên, cụ thể là 8 chữ cái: \textbf{f, i, t, h, c, m, u, s} (không phân
+biệt hoa thường). Chương trình cần thỏa mãn các ràng buộc sau:
+
+\begin{itemize}
+  \item Đầu vào: file \texttt{words.txt} trên HDFS tại đường dẫn
+        \texttt{hdfs://localhost:9000/hcmus/23120099/words.txt}
+  \item Phân tách từ bằng dấu cách (không dùng biểu thức chính quy)
+  \item Chuyển tất cả từ về chữ thường trước khi kiểm tra
+  \item Kết quả đầu ra: file \texttt{results.txt} có định dạng TSV (tab-separated),
+        mỗi dòng gồm một chữ cái và số đếm tương ứng, tổng cộng 8 dòng
+  \item Kết quả được sắp xếp theo thứ tự bảng chữ cái
+\end{itemize}
+
+Tôi sử dụng Apache Spark với ngôn ngữ Scala để thực hiện bài toán này vì Spark cung
+cấp API RDD (Resilient Distributed Dataset) mạnh mẽ, phù hợp cho xử lý dữ liệu
+phân tán quy mô lớn.
+
+% ------------------------------------------------------------
+\subsection{Mã nguồn Scala (WordCount.scala)}
+
+Dưới đây là toàn bộ mã nguồn chương trình WordCount được viết bằng Scala, sử dụng
+Apache Spark:
+
+\begin{minted}[linenos]{scala}
+// Nhập các thư viện cần thiết của Apache Spark
+import org.apache.spark.{SparkConf, SparkContext}
+
+// Đối tượng chính của chương trình
+object WordCount {
+
+  // Danh sách 8 chữ cái cần đếm theo yêu cầu bài lab
+  val TARGET_LETTERS: Set[Char] = Set('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
+
+  def main(args: Array[String]): Unit = {
+
+    // Bước 1: Khởi tạo cấu hình Spark với tên ứng dụng
+    val conf = new SparkConf()
+      .setAppName("WordCount_23120099")   // Tên hiển thị trên YARN/Spark UI
+      .setMaster("local[*]")             // Chạy local, dùng toàn bộ CPU core
+
+    // Bước 2: Tạo SparkContext — điểm khởi đầu của mọi Spark job
+    val sc = new SparkContext(conf)
+    sc.setLogLevel("WARN")               // Giảm log spam để dễ đọc output
+
+    // Bước 3: Đọc file words.txt từ HDFS
+    // Hadoop đã cấu hình ở localhost:9000 theo core-site.xml
+    val inputPath = "hdfs://localhost:9000/hcmus/23120099/words.txt"
+    val lines = sc.textFile(inputPath)   // Mỗi phần tử RDD là một dòng văn bản
+
+    // Bước 4: Xử lý từng dòng — tách từ bằng dấu cách (không dùng regex)
+    val words = lines.flatMap { line =>
+      line.split(" ")                    // Phân tách bằng ký tự cách đơn giản
+    }
+
+    // Bước 5: Lọc bỏ các token rỗng phát sinh sau khi split
+    val nonEmptyWords = words.filter { word =>
+      word.nonEmpty                      // Loại bỏ chuỗi rỗng ""
+    }
+
+    // Bước 6: Chuyển tất cả từ về chữ thường để so sánh không phân biệt hoa thường
+    val lowerWords = nonEmptyWords.map { word =>
+      word.toLowerCase                   // "Hello" -> "hello", "THE" -> "the"
+    }
+
+    // Bước 7: Chỉ giữ lại các từ bắt đầu bằng một trong 8 chữ cái mục tiêu
+    val filteredWords = lowerWords.filter { word =>
+      word.nonEmpty && TARGET_LETTERS.contains(word.charAt(0))
+      // Kiểm tra ký tự đầu tiên có thuộc tập {f, i, t, h, c, m, u, s} không
+    }
+
+    // Bước 8: Ánh xạ mỗi từ thành cặp (chữ_cái_đầu, 1) để đếm
+    val letterOnePairs = filteredWords.map { word =>
+      (word.charAt(0).toString, 1)       // Ví dụ: "fish" -> ("f", 1)
+    }
+
+    // Bước 9: Gộp (reduce) theo key — cộng dồn số 1 của cùng một chữ cái
+    val letterCounts = letterOnePairs.reduceByKey { (count1, count2) =>
+      count1 + count2                    // Ví dụ: ("f", 1), ("f", 1) -> ("f", 2)
+    }
+
+    // Bước 10: Sắp xếp kết quả theo chữ cái (key) tăng dần để output có thứ tự
+    val sortedCounts = letterCounts.sortByKey(ascending = true)
+
+    // Bước 11: Chuyển đổi sang định dạng TSV (tab-separated values)
+    // Mỗi dòng: "chữ_cái\tsố_đếm" theo yêu cầu output của bài
+    val tsvOutput = sortedCounts.map { case (letter, count) =>
+      s"$letter\t$count"                 // Nối bằng ký tự tab '\t'
+    }
+
+    // Bước 12: Ghi kết quả ra file results.txt trên hệ thống file cục bộ
+    // Dùng coalesce(1) để ghi vào một file duy nhất thay vì nhiều part file
+    val outputPath = "results"
+    tsvOutput.coalesce(1).saveAsTextFile(outputPath)
+    // Sau khi chạy, kết quả nằm ở results/part-00000
+
+    // Bước 13: In kết quả ra console để kiểm tra nhanh
+    println("=== Kết quả WordCount ===")
+    sortedCounts.collect().foreach { case (letter, count) =>
+      println(s"$letter\t$count")        // Hiển thị từng dòng kết quả
+    }
+
+    // Bước 14: Dừng SparkContext để giải phóng tài nguyên
+    sc.stop()
+  }
+}
+\end{minted}
+
+Giải thích các thành phần chính của chương trình:
+
+\begin{itemize}
+  \item \mintinline{scala}{SparkConf} và \mintinline{scala}{SparkContext}: hai đối
+        tượng cốt lõi để khởi tạo môi trường Spark. \mintinline{scala}{SparkContext}
+        là cổng vào duy nhất để tương tác với cluster.
+
+  \item \mintinline{scala}{sc.textFile(inputPath)}: đọc file từ HDFS và tạo một RDD
+        trong đó mỗi phần tử là một dòng văn bản. Spark tự động xử lý việc đọc phân
+        tán từ các DataNode.
+
+  \item \mintinline{scala}{flatMap}: ánh xạ mỗi dòng thành nhiều từ và làm phẳng
+        (flatten) kết quả thành một RDD duy nhất chứa tất cả các từ.
+
+  \item \mintinline{scala}{reduceByKey}: thực hiện tổng hợp phân tán — gộp tất cả
+        các cặp có cùng key (chữ cái đầu) bằng hàm cộng, tương đương với bước
+        \textit{Reduce} trong mô hình MapReduce.
+
+  \item \mintinline{scala}{sortByKey}: sắp xếp RDD theo key theo thứ tự từ điển,
+        đảm bảo output có thứ tự nhất quán.
+
+  \item \mintinline{scala}{coalesce(1)}: hợp nhất tất cả partition thành một file
+        duy nhất trước khi ghi, tránh tình trạng kết quả bị phân mảnh thành nhiều
+        \texttt{part-XXXXX} file.
+\end{itemize}
+
+% ------------------------------------------------------------
+\subsection{Hướng dẫn biên dịch và chạy}
+
+Dự án được tổ chức theo cấu trúc SBT (Scala Build Tool) tiêu chuẩn. Để biên dịch
+và đóng gói chương trình, tôi chạy lệnh sau trong thư mục gốc của dự án:
+
+\begin{minted}{bash}
+sbt package
+\end{minted}
+
+Lệnh này biên dịch toàn bộ mã nguồn Scala và tạo ra file JAR tại
+\texttt{target/scala-2.12/wordcount\_2.12-1.0.jar}. Sau khi có file JAR, tôi submit
+job lên Spark:
+
+\begin{minted}{bash}
+spark-submit \
+  --class WordCount \
+  --master local[*] \
+  target/scala-2.12/wordcount_2.12-1.0.jar
+\end{minted}
+
+Spark sẽ đọc file \texttt{words.txt} trực tiếp từ HDFS thông qua đường dẫn
+\texttt{hdfs://localhost:9000/hcmus/23120099/words.txt} đã được hardcode trong mã
+nguồn. Quá trình này sử dụng thư viện Hadoop client tích hợp sẵn trong Spark để
+giao tiếp với NameNode và DataNode. Với chế độ \texttt{local[*]}, Spark sử dụng
+tất cả CPU core của máy để thực thi job mà không cần cluster YARN riêng biệt.
+
+% Ảnh chụp màn hình kết quả spark-submit
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{spark_submit.png}
+  \caption{Chạy spark-submit WordCount thành công}
+  \label{fig:spark-submit}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Kết quả}
+
+Sau khi chạy xong, kết quả được lưu vào file \texttt{results/part-00000} với định
+dạng tab-separated. Nội dung file \texttt{results.txt} thu được:
+
+\begin{minted}{text}
+c	38934
+f	15870
+h	18662
+i	15220
+m	25194
+s	50571
+t	25223
+u	23790
+\end{minted}
+
+% Ảnh chụp màn hình cat results.txt
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{result.png}
+  \caption{Nội dung file results.txt sau khi chạy WordCount}
+  \label{fig:results}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Kiểm thử}
+
+Để xác minh tính đúng đắn của chương trình trước khi chạy trên toàn bộ
+\texttt{words.txt}, tôi tự kiểm thử với một tập dữ liệu nhỏ gồm 10 từ bao phủ
+đủ 8 chữ cái mục tiêu:
+
+\textbf{Dữ liệu kiểm thử (\texttt{test\_input.txt}):}
+\begin{minted}{text}
+fish Imagine the House cat Mango umbrella Sun Fire hello
+\end{minted}
+
+\textbf{Kết quả tính tay (không phân biệt hoa thường):}
+\begin{itemize}
+  \item \textbf{c}: cat $\rightarrow$ 1
+  \item \textbf{f}: fish, Fire $\rightarrow$ 2
+  \item \textbf{h}: House, hello $\rightarrow$ 2
+  \item \textbf{i}: Imagine $\rightarrow$ 1
+  \item \textbf{m}: Mango $\rightarrow$ 1
+  \item \textbf{s}: Sun $\rightarrow$ 1
+  \item \textbf{t}: the $\rightarrow$ 1
+  \item \textbf{u}: umbrella $\rightarrow$ 1
+\end{itemize}
+
+\textbf{Kết quả mong đợi (TSV):}
+\begin{minted}{text}
+c	1
+f	2
+h	2
+i	1
+m	1
+s	1
+t	1
+u	1
+\end{minted}
+
+\textbf{Kết quả thực tế từ chương trình:} Kết quả từ chạy WordCount trên file kiểm
+thử khớp hoàn toàn với kết quả tính tay, xác nhận rằng chương trình hoạt động đúng
+theo logic MapReduce: đọc từ HDFS, phân tách theo dấu cách, chuyển chữ thường, lọc
+8 chữ cái mục tiêu, đếm, sắp xếp, và xuất định dạng TSV.

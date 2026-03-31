@@ -1,0 +1,10 @@
+[info] welcome to sbt 1.9.7 (Arch Linux Java 11.0.30)
+[info] loading settings for project wordcount-build from plugins.sbt ...
+[info] loading project definition from /home/pearspringmind/Studying/Big Data/Lab 01/WordCount/project
+[info] loading settings for project wordcount from build.sbt ...
+[info] set current project to WordCount (in build file:/home/pearspringmind/Studying/Big%20Data/Lab%2001/WordCount/)
+[success] Total time: 0 s, completed Mar 30, 2026, 5:40:24 PM
+[info] 1 file(s) merged using strategy 'Discard' (Run the task at debug level to see the details)
+[info] Built: /home/pearspringmind/Studying/Big Data/Lab 01/WordCount/target/scala-2.13/WordCount-assembly-1.0.jar
+[info] Jar hash: fa7dbb9f9948e685387afa2061eac35b73cf4d91
+[success] Total time: 14 s, completed Mar 30, 2026, 5:40:38 PM

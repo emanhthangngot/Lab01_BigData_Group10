@@ -1,0 +1,46 @@
+\section{Kết luận}
+
+Qua bài lab này, tôi đã trải qua toàn bộ chu trình cài đặt, cấu hình và vận hành
+một cụm Hadoop — từ chế độ pseudo-distributed đơn giản trên máy cá nhân cho đến
+mô hình fully-distributed nhiều node. Đây là nền tảng thực hành không thể thiếu
+để hiểu sâu hơn về kiến trúc của hệ sinh thái Big Data.
+
+\textbf{Những kiến thức thu được:}
+
+\begin{itemize}
+  \item \textbf{Kiến trúc HDFS}: tôi hiểu rõ vai trò phân công giữa NameNode (quản
+        lý metadata và namespace) và DataNode (lưu trữ dữ liệu thực tế dạng block),
+        cũng như cơ chế replication giúp đảm bảo tính chịu lỗi (fault tolerance).
+        Nguyên tắc \textit{write once, read many} của HDFS phù hợp với các workload
+        phân tích dữ liệu lớn.
+
+  \item \textbf{Hệ thống YARN}: tôi nắm được mô hình quản lý tài nguyên hai tầng
+        của YARN — ResourceManager toàn cục điều phối tài nguyên, còn ApplicationMaster
+        từng job tự quản lý lifecycle của các task. Kiến trúc này tách biệt quản lý
+        tài nguyên khỏi quản lý job, giúp YARN hỗ trợ nhiều framework (MapReduce,
+        Spark, Flink) trên cùng một cluster.
+
+  \item \textbf{Mô hình MapReduce và Spark}: qua bài toán WordCount, tôi thực hành
+        triển khai mô hình lập trình phân tán theo paradigm Map-Reduce. Spark với
+        API RDD cho phép xử lý dữ liệu in-memory, nhanh hơn đáng kể so với
+        MapReduce truyền thống khi xử lý các tác vụ lặp lại (iterative).
+
+  \item \textbf{Quản lý phân quyền HDFS}: hệ thống phân quyền của HDFS tương tự
+        Unix (owner, group, others) nhưng vận hành trong môi trường phân tán, đòi
+        hỏi sự nhất quán về tên người dùng trên nhiều node.
+\end{itemize}
+
+\textbf{Khó khăn và bài học kinh nghiệm:}
+
+Khó khăn lớn nhất tôi gặp phải là sự không tương thích giữa Cluster ID sau khi
+format lại NameNode và ID cũ còn lưu trong thư mục DataNode, khiến DataNode từ
+chối kết nối vào cluster. Bài học rút ra là: trong môi trường production, không bao
+giờ format lại NameNode trừ khi xóa sạch toàn bộ dữ liệu DataNode đồng thời. Ngoài
+ra, việc sử dụng Arch Linux — hệ điều hành không phổ biến trong cộng đồng Hadoop —
+đôi khi gây ra các vấn đề về tên giao diện mạng không theo chuẩn truyền thống, đòi
+hỏi phải tìm hiểu thêm để cấu hình đúng.
+
+Kinh nghiệm thực hành qua bài lab này là bước đệm quan trọng để tiếp cận các chủ
+đề nâng cao hơn trong môn học, bao gồm tối ưu hóa job Spark, tuning cấu hình YARN,
+và tích hợp Hadoop với các hệ thống lưu trữ và xử lý hiện đại như Hive, HBase, và
+Kafka.

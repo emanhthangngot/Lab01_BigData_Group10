@@ -1,0 +1,383 @@
+\section{Cài đặt Hadoop Pseudo-Distributed}
+
+Phần này trình bày toàn bộ quá trình tôi cài đặt và cấu hình Hadoop 3.4.0 ở chế độ
+pseudo-distributed trên máy cá nhân chạy Arch Linux. Mỗi bước đều được ghi lại kèm
+lệnh thực thi và ảnh chụp màn hình minh hoạ.
+
+% ------------------------------------------------------------
+\subsection{Môi trường hệ thống}
+
+Tôi sử dụng Arch Linux — một bản phân phối rolling-release cho phép luôn cập nhật các
+gói phần mềm lên phiên bản mới nhất mà không cần cài đặt lại toàn bộ hệ thống. Nhân
+Linux đang dùng là phiên bản mới nhất từ kho chính thức của Arch, đảm bảo hỗ trợ đầy
+đủ các tính năng phần cứng hiện đại. Arch Linux được chọn vì tính minh bạch, tài liệu
+ArchWiki phong phú, và khả năng kiểm soát hoàn toàn các gói cài đặt thông qua trình
+quản lý gói \texttt{pacman}.
+
+Để kiểm tra thông tin nhân và kiến trúc hệ thống, tôi chạy lệnh:
+
+\begin{minted}{bash}
+uname -a
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{uname.png}
+  \caption{Kết quả kiểm tra nhân và kiến trúc hệ thống bằng lệnh uname -a}
+  \label{fig:uname}
+\end{figure}
+
+Đồng thời, để hệ thống các node trong cụm có thể giao tiếp với nhau ổn định, tôi kiểm tra địa chỉ IP hiện tại trên giao diện mạng bằng lệnh \texttt{ip addr}:
+
+\begin{minted}{bash}
+ip addr
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{08-ip-proof.png}
+  \caption{Xác minh địa chỉ IP của hệ thống phục vụ cấu hình Hadoop}
+  \label{fig:ip-addr}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Cài đặt Java và Scala}
+
+Hadoop yêu cầu Java Runtime Environment để vận hành vì toàn bộ hệ sinh thái Hadoop
+được viết bằng Java. Tôi chọn OpenJDK 11 vì đây là phiên bản LTS được Hadoop 3.4.0
+hỗ trợ chính thức và đã được kiểm chứng ổn định. Scala được cài đặt để phục vụ cho
+việc lập trình WordCount bằng Apache Spark ở phần sau, vì Spark được viết bằng Scala
+và hỗ trợ API Scala tốt nhất.
+
+\begin{minted}{bash}
+sudo pacman -S jre11-openjdk jdk11-openjdk
+yay -S scala
+java -version
+scala -version
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.48\textwidth]{01-java-install.png}
+  \includegraphics[width=0.48\textwidth]{02-scala-install.png}
+  \caption{Cài đặt Java SE 11 và Scala thành công}
+  \label{fig:java-scala}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Tải và giải nén Hadoop}
+
+Tôi tải Hadoop phiên bản 3.4.0 — phiên bản ổn định mới nhất tại thời điểm thực hiện
+bài lab — trực tiếp từ máy chủ phân phối chính thức của Apache. Sau khi tải về, file
+nén \texttt{.tar.gz} được giải nén vào thư mục \texttt{/opt/} theo quy ước đặt phần
+mềm bên thứ ba trên hệ thống Linux. Cuối cùng, tôi thay đổi quyền sở hữu thư mục
+Hadoop để tài khoản người dùng hiện tại có toàn quyền đọc, ghi và thực thi.
+
+\begin{minted}{bash}
+wget https://downloads.apache.org/hadoop/common/hadoop-3.4.0/hadoop-3.4.0.tar.gz
+sudo tar -xzvf hadoop-3.4.0.tar.gz -C /opt/
+sudo chown -R $USER:$USER /opt/hadoop
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.48\textwidth]{03-hadoop-download.png}
+  \includegraphics[width=0.48\textwidth]{04-hadoop-list.png}
+  \caption{Tải và kiểm tra bộ cài Hadoop 3.4.0}
+  \label{fig:hadoop-download}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Cấu hình biến môi trường}
+
+Các biến môi trường cần thiết để hệ thống và Hadoop tìm đúng đường dẫn đến Java và
+các công cụ Hadoop. Biến \texttt{JAVA\_HOME} chỉ đường dẫn đến thư mục cài đặt JDK,
+\texttt{HADOOP\_HOME} trỏ đến thư mục Hadoop đã giải nén, còn biến \texttt{PATH}
+được bổ sung đường dẫn đến thư mục \texttt{bin} và \texttt{sbin} của Hadoop để có
+thể gọi trực tiếp các lệnh như \texttt{hdfs}, \texttt{start-dfs.sh} từ bất kỳ đâu
+trong terminal. Tôi thêm các dòng này vào cuối file \texttt{\textasciitilde/.bashrc}
+để tự động nạp khi mở terminal mới.
+
+\begin{minted}{bash}
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+export HADOOP_HOME=/opt/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.48\textwidth]{05-env-vars.png}
+  \includegraphics[width=0.48\textwidth]{06-hadoop-env-config.png}
+  \caption{Cấu hình biến môi trường trong ~/.bashrc và hadoop-env.sh}
+  \label{fig:env-vars}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Cấu hình XML (core-site.xml, hdfs-site.xml)}
+
+Hadoop sử dụng các file XML để cấu hình hành vi của từng thành phần. File
+\texttt{core-site.xml} xác định địa chỉ mặc định của hệ thống file phân tán thông
+qua thuộc tính \texttt{fs.defaultFS}; ở chế độ pseudo-distributed, tôi đặt giá trị
+là \texttt{hdfs://localhost:9000}. File \texttt{hdfs-site.xml} cấu hình các thông số
+của HDFS: \texttt{dfs.replication} được đặt bằng 1 vì chỉ có một node duy nhất,
+\texttt{dfs.namenode.name.dir} chỉ đường dẫn lưu trữ metadata của NameNode, và
+\texttt{dfs.datanode.data.dir} chỉ đường dẫn lưu trữ dữ liệu thực tế của DataNode.
+
+\textbf{Nội dung file \texttt{core-site.xml}:}
+
+\begin{minted}{xml}
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://localhost:9000</value>
+  </property>
+</configuration>
+\end{minted}
+
+\textbf{Nội dung file \texttt{hdfs-site.xml}:}
+
+\begin{minted}{xml}
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>1</value>
+  </property>
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>/opt/hadoop/data/namenode</value>
+  </property>
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>/opt/hadoop/data/datanode</value>
+  </property>
+</configuration>
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{07-xml-config.png}
+  \caption{Nội dung cấu hình core-site.xml và hdfs-site.xml}
+  \label{fig:xml-config}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Format NameNode}
+
+Trước khi khởi động HDFS lần đầu tiên, NameNode cần được định dạng (format) để khởi
+tạo cấu trúc thư mục metadata và tạo ID định danh cho cluster. Quá trình này tương
+tự như định dạng một ổ đĩa cứng mới: nó xoá toàn bộ dữ liệu metadata cũ và tạo cấu
+trúc mới từ đầu. Do đó, \textbf{không nên chạy lệnh format lại sau khi cluster đã
+có dữ liệu}, vì điều này sẽ khiến DataNode không nhận ra cluster ID mới và toàn bộ
+dữ liệu trên HDFS sẽ không còn truy cập được. Lệnh format chỉ nên thực hiện một lần
+duy nhất khi cài đặt mới.
+
+\begin{minted}{bash}
+hdfs namenode -format
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{09-namenode-format.png}
+  \caption{Format NameNode thành công — thông báo successfully formatted}
+  \label{fig:namenode-format}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Khởi động Cluster}
+
+Sau khi format xong, tôi tiến hành khởi động cluster bằng hai script có sẵn trong
+thư mục \texttt{sbin} của Hadoop. Script \texttt{start-dfs.sh} khởi động các tiến
+trình liên quan đến hệ thống file phân tán: NameNode (quản lý metadata và namespace
+của HDFS) và DataNode (lưu trữ dữ liệu thực tế theo dạng block). Script
+\texttt{start-yarn.sh} khởi động ResourceManager (quản lý tài nguyên toàn cụm và
+lên lịch các job) và NodeManager (quản lý tài nguyên trên từng node và thực thi
+các container chứa task).
+
+\begin{minted}{bash}
+start-dfs.sh
+start-yarn.sh
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{10-start-cluster-jps.png}
+  \caption{Khởi động DFS, YARN và kiểm tra tiến trình JPS}
+  \label{fig:start-cluster}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Kiểm tra tiến trình (jps)}
+
+Sau khi khởi động, tôi dùng lệnh \texttt{jps} (Java Virtual Machine Process Status
+Tool) để liệt kê tất cả các tiến trình JVM đang chạy trên hệ thống. Trong chế độ
+pseudo-distributed, cần có đủ 4 tiến trình daemon sau:
+\begin{itemize}
+  \item \textbf{NameNode} — quản lý namespace và metadata của HDFS;
+  \item \textbf{DataNode} — lưu trữ các block dữ liệu thực tế;
+  \item \textbf{ResourceManager} — quản lý và phân phối tài nguyên (CPU, RAM) trong
+        cluster YARN;
+  \item \textbf{NodeManager} — báo cáo tài nguyên và thực thi container trên node
+        hiện tại.
+\end{itemize}
+Nếu thiếu bất kỳ tiến trình nào trong số này, cluster chưa hoạt động đúng và cần
+kiểm tra log để xác định nguyên nhân.
+
+\begin{minted}{bash}
+jps
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{10-start-cluster-jps.png}
+  \caption{Lệnh jps hiển thị đủ 4 tiến trình daemon}
+  \label{fig:jps}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{WebUI — Giao diện quản trị}
+
+Hadoop cung cấp giao diện web trực quan để giám sát trạng thái cluster mà không cần
+dùng dòng lệnh. Tôi truy cập địa chỉ \url{http://localhost:9870} trên trình duyệt
+để mở NameNode Web UI. Giao diện này cho phép xem thông tin tổng quan về cluster
+như dung lượng HDFS đã dùng và còn trống, danh sách các DataNode đang hoạt động
+(tab \textit{Datanodes}), cây thư mục HDFS (tab \textit{Utilities > Browse the file
+system}), và nhật ký hoạt động. Việc tab \textit{Datanodes} hiển thị trạng thái
+\textit{Live Nodes: 1} xác nhận DataNode đã kết nối thành công với NameNode.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{11-webui-datanodes.png}
+  \caption{Giao diện WebUI Hadoop — tab Datanodes hiển thị Live Nodes}
+  \label{fig:webui}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Tạo thư mục HDFS và User}
+
+Theo yêu cầu của bài lab, tôi tạo cấu trúc thư mục trên HDFS phục vụ cho việc lưu
+trữ dữ liệu theo từng sinh viên. Thư mục gốc \texttt{/hcmus} được tạo để chứa dữ
+liệu của tất cả thành viên, sau đó thư mục con \texttt{/hcmus/23120099} được tạo
+riêng cho MSSV của tôi. Song song với việc tạo thư mục HDFS, tôi tạo tài khoản
+Linux mới \texttt{khtn\_23120099} để phục vụ bước phân quyền ở mục tiếp theo; tài
+khoản này sẽ được gán làm chủ sở hữu (owner) của thư mục HDFS tương ứng.
+
+\begin{minted}{bash}
+hdfs dfs -mkdir /hcmus
+sudo useradd -m khtn_23120099
+hdfs dfs -mkdir /hcmus/23120099
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.48\textwidth]{12-hdfs-mkdir-user.png}
+  \includegraphics[width=0.48\textwidth]{13-hdfs-mkdir-sub.png}
+  \caption{Tạo thư mục HDFS /hcmus/23120099 và user Linux khtn\_23120099}
+  \label{fig:mkdir-user}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Tải dữ liệu lên HDFS}
+
+Tôi tải file \texttt{words.txt} — danh sách từ dùng cho bài toán WordCount — lên
+thư mục HDFS đã tạo bằng lệnh \texttt{hdfs dfs -put}. Lệnh này sao chép file từ hệ
+thống file cục bộ lên HDFS, phân chia thành các block (mặc định 128 MB) và phân
+phối đến các DataNode theo chính sách replication đã cấu hình. Sau khi tải lên, tôi
+xác nhận file đã tồn tại trên HDFS bằng lệnh \texttt{-ls}, kiểm tra kích thước
+và thời gian sửa đổi để đảm bảo dữ liệu được tải lên đầy đủ.
+
+\begin{minted}{bash}
+hdfs dfs -put words.txt /hcmus/23120099/
+hdfs dfs -ls /hcmus/23120099/
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{14-hdfs-put-confirm.png}
+  \caption{Tải file words.txt lên HDFS và xác nhận bằng lệnh ls}
+  \label{fig:hdfs-put}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Phân quyền và chuyển Owner}
+
+Để đảm bảo bảo mật và tuân thủ mô hình phân quyền của HDFS, tôi thực hiện hai thao
+tác: đặt quyền truy cập theo chuẩn Unix octal \texttt{744} (nghĩa là chủ sở hữu có
+toàn quyền đọc-ghi-thực thi \texttt{rwx}, còn nhóm và người khác chỉ có quyền đọc
+\texttt{r--}), và chuyển quyền sở hữu thư mục sang tài khoản \texttt{khtn\_23120099}
+đã tạo trước đó. Lệnh \texttt{-ls /hcmus/} sau đó xác nhận thông tin phân quyền và
+owner đã được áp dụng đúng.
+
+\begin{minted}{bash}
+hdfs dfs -chmod 744 /hcmus/23120099
+hdfs dfs -chown khtn_23120099 /hcmus/23120099
+hdfs dfs -ls /hcmus/
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{15-hdfs-chmod-chown.png}
+  \caption{Phân quyền chmod 744 và chuyển owner cho khtn\_23120099}
+  \label{fig:chmod-chown}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Chạy file JAR xác thực}
+
+File \texttt{hadoop-test.jar} là công cụ xác thực do giáo viên cung cấp, có nhiệm
+vụ kết nối vào HDFS thông qua cổng đã cấu hình, đọc thông tin thư mục của sinh viên,
+ghi nhận địa chỉ MAC của máy đang chạy, và tạo ra file kết quả \texttt{23120099\_verification.txt}
+chứa thông tin xác thực duy nhất. File kết quả này dùng để chứng minh rằng sinh viên
+đã thực sự cài đặt và vận hành Hadoop thành công trên máy của mình, không phải copy
+kết quả từ người khác.
+
+\begin{minted}{bash}
+java -jar hadoop-test.jar 9000 /hcmus/23120099
+cat 23120099_verification.txt
+\end{minted}
+
+Nội dung file xác thực \texttt{23120099\_verification.txt} thu được sau khi chạy JAR:
+
+\begin{minted}{text}
+MAC=14-5A-FC-90-C5-E7
+8a656a9128bc02d0e9668d65b0c0a4e0951c1024deee63891fec5a6c2015a943
+\end{minted}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{16-jar-verification.png}
+  \caption{Chạy hadoop-test.jar và tạo file xác thực minh chứng thành công}
+  \label{fig:jar-run}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{verification-txt.png}
+  \caption{Nội dung file 23120099\_verification.txt}
+  \label{fig:verification}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Xử lý sự cố rủi ro môi trường do Incompatible ClusterID}
+
+Trong quá trình vận hành, do tác động của việc format lại cấu trúc NameNode bằng lệnh \texttt{hdfs namenode -format} nhiều lần, NameNode đã sinh ra ClusterID mới. Trong lúc đó, thư mục dữ liệu của DataNode (\texttt{/opt/hadoop/data/datanode}) vẫn còn lưu ClusterID cũ từ lần chạy trước. Hệ quả là DataNode từ chối kết nối và ngưng hoạt động với thông báo lỗi \texttt{java.io.IOException: Incompatible clusterIDs}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{error-clusterid.png}
+  \caption{Lỗi Incompatible clusterIDs khiến DataNode không thể hoạt động do xung đột ID}
+  \label{fig:error-clusterid}
+\end{figure}
+
+Theo hướng dẫn tra cứu trên cộng đồng lập trình viên StackOverflow về vấn đề cấu hình HDFS (Hình \ref{fig:troubleshoot-search}), tôi đã tiến hành xử lý triệt để như sau:
+\begin{itemize}
+    \item Dừng toàn bộ hệ thống bằng lệnh \texttt{stop-dfs.sh} và \texttt{stop-yarn.sh}.
+    \item Xoá sạch thư mục dữ liệu DataNode bị xung đột thông qua lệnh \texttt{rm -rf /opt/hadoop/data/datanode} (do trên môi trường mới chưa lưu trữ file dữ liệu nào quan trọng).
+    \item Tiến hành khởi động lại bằng \texttt{start-dfs.sh}. Lúc này, quá trình DataNode bootstrap sẽ tự động đồng bộ lại ClusterID mới nhất từ NameNode.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{troubleshoot-search.png}
+  \caption{Quá trình tra cứu và giải quyết lỗi clusterID trên diễn đàn StackOverflow}
+  \label{fig:troubleshoot-search}
+\end{figure}

@@ -1,0 +1,129 @@
+\section{Cài đặt Cụm Hadoop Fully-Distributed}
+
+% ------------------------------------------------------------
+\subsection{Kiến trúc cụm vật lý}
+
+Cụm Hadoop fully-distributed của nhóm gồm một node Master và hai node Worker, tất
+cả được kết nối qua mạng LAN nội bộ. Tôi (MSSV 23120099, Trưởng nhóm Leader A) phụ
+trách node Master chạy Arch Linux. Các thành viên còn lại của nhóm phụ trách các
+node Worker. Trong chế độ fully-distributed, mỗi node đảm nhận vai trò chuyên biệt:
+Master chạy các tiến trình quản lý (NameNode, ResourceManager), còn Worker chạy các
+tiến trình lưu trữ và tính toán (DataNode, NodeManager).
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Node} & \textbf{Vai trò} & \textbf{Địa chỉ IP} \\
+\midrule
+master (23120099) & NameNode / ResourceManager & TODO \\
+worker1 (B)       & DataNode / NodeManager     & TODO \\
+worker2 (C/D)     & DataNode / NodeManager     & TODO \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% ------------------------------------------------------------
+\subsection{Cấu hình mạng và SSH}
+
+Để các node trong cụm có thể giao tiếp với nhau bằng tên thay vì địa chỉ IP, tôi
+chỉnh sửa file \texttt{/etc/hosts} trên tất cả các node, thêm các dòng ánh xạ tên
+sang IP tương ứng. Ví dụ nội dung file \texttt{/etc/hosts} trên node Master:
+
+\begin{minted}{bash}
+# Cấu hình /etc/hosts cho cụm Hadoop fully-distributed
+# TODO: thay TODO bằng IP thực tế của từng node
+TODO    master
+TODO    worker1
+TODO    worker2
+\end{minted}
+
+Tiếp theo, tôi cấu hình SSH không mật khẩu (passwordless SSH) từ Master đến tất cả
+Worker để các script \texttt{start-dfs.sh} và \texttt{start-yarn.sh} có thể tự động
+SSH vào từng Worker để khởi động daemon mà không cần nhập mật khẩu:
+
+\begin{minted}{bash}
+# Tạo cặp khóa SSH trên node Master
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+
+# Sao chép public key sang từng Worker (thay username và IP thực tế)
+ssh-copy-id username@worker1
+ssh-copy-id username@worker2
+
+# Kiểm tra kết nối SSH không mật khẩu
+ssh username@worker1 "hostname"
+ssh username@worker2 "hostname"
+\end{minted}
+
+Nội dung file \texttt{\$HADOOP\_HOME/etc/hadoop/workers} cần được cập nhật để liệt
+kê tên hoặc IP của các Worker node:
+
+\begin{minted}{bash}
+worker1
+worker2
+\end{minted}
+
+Đối với \texttt{core-site.xml}, giá trị của \texttt{fs.defaultFS} cần được đổi từ
+\texttt{hdfs://localhost:9000} sang \texttt{hdfs://master:9000} để các Worker node
+có thể kết nối đến NameNode trên Master thông qua tên hostname:
+
+\begin{minted}{xml}
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://master:9000</value>
+  </property>
+</configuration>
+\end{minted}
+
+% TODO: Thêm ảnh chụp màn hình kiểm tra SSH
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{2-node.png}
+  \caption{Kiểm tra kết nối SSH không mật khẩu từ Master đến Worker}
+  \label{fig:ssh-test}
+\end{figure}
+
+% ------------------------------------------------------------
+\subsection{Khởi động và kiểm tra YARN}
+
+Sau khi cấu hình xong, tôi khởi động toàn bộ cụm từ node Master bằng hai script
+quen thuộc. Khác với chế độ pseudo-distributed, lần này các daemon sẽ được khởi
+động trên nhiều máy vật lý thực sự:
+
+\begin{minted}{bash}
+# Khởi động từ node Master
+start-dfs.sh    # Tự động SSH vào Worker để khởi động DataNode
+start-yarn.sh   # Tự động SSH vào Worker để khởi động NodeManager
+\end{minted}
+
+Sau khi khởi động, tôi kiểm tra trạng thái trên từng node bằng \texttt{jps}:
+
+\begin{minted}{bash}
+# Trên Master — kỳ vọng có: NameNode, ResourceManager, SecondaryNameNode
+jps
+
+# Trên mỗi Worker — kỳ vọng có: DataNode, NodeManager
+ssh username@worker1 "jps"
+ssh username@worker2 "jps"
+\end{minted}
+
+Giao diện WebUI của NameNode có thể truy cập tại
+\texttt{http://<master-ip>:9870} để xem trạng thái HDFS và danh sách DataNode. Giao
+diện YARN ResourceManager có thể truy cập tại
+\texttt{http://<master-ip>:8088} để theo dõi các job đang chạy và lịch sử thực thi.
+
+% TODO: Thêm ảnh chụp màn hình WebUI NameNode
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{webui-namenode.png}
+  \caption{WebUI NameNode hiển thị các DataNode trong cụm fully-distributed}
+  \label{fig:webui-cluster}
+\end{figure}
+
+% TODO: Thêm ảnh chụp màn hình WebUI YARN
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{webui-yarn.png}
+  \caption{WebUI YARN ResourceManager tại cổng 8088}
+  \label{fig:webui-yarn}
+\end{figure}
