@@ -1,0 +1,42 @@
+\section{Giới thiệu}
+\label{sec:introduction}
+
+Báo cáo này trình bày quá trình thực hành Lab 1 của môn học \textbf{Nhập môn Big Data (CSC14118)}, bao gồm hai nội dung chính:
+
+\begin{enumerate}
+    \item \textbf{Cài đặt cụm Hadoop giả phân tán (pseudo-distributed mode)} trên môi trường WSL/Ubuntu, bao gồm cấu hình Java, SSH, HDFS, và YARN.
+    \item \textbf{Thực hiện bài toán đếm từ (Word Count)} sử dụng ngôn ngữ Scala với framework MapReduce trên nền tảng Hadoop.
+\end{enumerate}
+
+\subsection{Môi trường thực hành}
+
+Toàn bộ quá trình cài đặt và thực hành được thực hiện trên \textbf{Windows Subsystem for Linux (WSL)} với bản phân phối \textbf{Ubuntu 22.04 LTS}. Lý do chọn môi trường này:
+
+\begin{itemize}
+    \item WSL cho phép chạy môi trường Linux đầy đủ trên Windows mà không cần máy ảo, giúp tiết kiệm tài nguyên phần cứng.
+    \item Ubuntu 22.04 là bản LTS ổn định, được hỗ trợ dài hạn và tương thích tốt với Hadoop.
+    \item Thống nhất với các thành viên trong nhóm để dễ dàng phối hợp và debug khi gặp lỗi.
+\end{itemize}
+
+\subsection{Các phiên bản phần mềm sử dụng}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{Phần mềm} & \textbf{Phiên bản} & \textbf{Lý do chọn} \\
+        \hline
+        Java (OpenJDK) & 11 & Được nhóm thống nhất; tương thích Hadoop 3.x \\
+        \hline
+        Hadoop & 3.3.6 & Phổ biến, ổn định, nhiều tài liệu hỗ trợ \\
+        \hline
+        Scala & 2.11.12 & Tương thích Hadoop 3.x; dùng trong MapReduce \\
+        \hline
+    \end{tabular}
+    \caption{Các phiên bản phần mềm sử dụng trong Lab}
+    \label{tab:software_versions}
+\end{table}
+
+\textbf{Lý do chọn Java 11:} Nhóm đã thống nhất sử dụng Java 11 vì đây là phiên bản LTS được Hadoop 3.3.x hỗ trợ chính thức, và tất cả thành viên đều có sẵn môi trường này từ các môn học trước.
+
+\textbf{Lý do chọn Hadoop 3.3.6:} Đây là bản phát hành ổn định nhất tại thời điểm thực hành, có nhiều bản vá lỗi so với các phiên bản trước, và được cộng đồng sử dụng rộng rãi.

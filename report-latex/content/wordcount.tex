@@ -1,0 +1,254 @@
+\section{Bài toán đếm từ (Word Count) với bộ lọc ký tự đầu bằng Scala}
+\label{sec:wordcount}
+
+Phần này trình bày chi tiết quá trình xây dựng, biên dịch và chạy một chương trình MapReduce bằng Scala trên nền tảng Hadoop. Yêu cầu bài toán không phải đếm tất cả các từ, mà \textbf{chỉ đếm những từ có ký tự đầu tiên thuộc tập hợp cố định}: \texttt{\{f, i, t, h, c, m, u, s\}} --- lấy cảm hứng từ tên viết tắt của Khoa Công nghệ Thông tin, Đại học Khoa học Tự nhiên (FIT HCMUS).
+
+% -------------------------------------------------------
+\subsection{Bước 1: Chuẩn bị dữ liệu đầu vào trên HDFS}
+
+\textbf{Mục đích:} Trong quy trình MapReduce, dữ liệu đầu vào phải nằm trên HDFS để Hadoop có thể phân tách thành các InputSplit và phân phối đến các Mapper node. File \texttt{words.txt} (5.3 MB) là bộ văn bản thô dùng làm dữ liệu đầu vào.
+
+\textbf{Các lệnh thực hiện:}
+\begin{enumerate}
+    \item \texttt{hdfs dfs -mkdir}: Tạo thư mục \texttt{/hcmus/23120166/input} trên HDFS để chứa file đầu vào.
+    \item \texttt{hdfs dfs -put}: Đẩy file \texttt{words.txt} từ filesystem local lên HDFS.
+    \item \texttt{hdfs dfs -ls}: Kiểm tra file đã được upload thành công với đúng kích thước.
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Tạo thư mục input và upload words.txt lên HDFS}]
+hdfs dfs -mkdir /hcmus/23120166/input
+hdfs dfs -put words.txt /hcmus/23120166/input/
+hdfs dfs -ls /hcmus/23120166/input/
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_1_hdfs_input.png}
+    \caption{File \texttt{words.txt} (5,329,535 bytes) đã được upload thành công vào \texttt{/hcmus/23120166/input/} trên HDFS}
+    \label{fig:hdfs_input}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 2: Kiểm tra phiên bản Scala}
+
+\textbf{Mục đích:} Xác nhận Scala đã được cài đặt và phiên bản phù hợp với Hadoop. Scala 2.11.x là phiên bản ổn định tương thích tốt với Hadoop 3.x trên Java 11.
+
+\begin{lstlisting}[style=bashstyle, caption={Kiểm tra phiên bản Scala}]
+scala -version
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{wc_2_scala_version.png}
+    \caption{Scala 2.11.12 đã được cài đặt sẵn trên hệ thống --- phiên bản tương thích với môi trường Hadoop}
+    \label{fig:scala_version}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 3: Thiết kế chương trình MapReduce bằng Scala}
+
+Chương trình được xây dựng thành 3 thành phần chính trong file \texttt{FilterWordCount.scala}:
+
+\subsubsection{Lớp TokenizerMapper}
+
+\textbf{Nhiệm vụ:} Đọc từng dòng văn bản, tách token theo khoảng trắng, lọc những từ có ký tự đầu thuộc tập mục tiêu, và phát ra cặp \texttt{(ký\_tự, 1)} cho từng từ thỏa điều kiện.
+
+\begin{lstlisting}[style=scalastyle, caption={Lớp TokenizerMapper --- lọc và phát cặp key-value}]
+class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
+    private val one = new IntWritable(1)
+    private val outKey = new Text()
+    private val targetChars = Set('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
+
+    override def map(key: Object, value: Text,
+            context: Mapper[Object, Text, Text, IntWritable]#Context
+    ): Unit = {
+        val tokenizer = new StringTokenizer(value.toString)
+        while (tokenizer.hasMoreTokens) {
+            val token = tokenizer.nextToken().toLowerCase
+            if (token.nonEmpty) {
+                val firstLetterOpt = token.find(_.isLetter)
+                firstLetterOpt match {
+                    case Some(ch) if targetChars.contains(ch) =>
+                        outKey.set(ch.toString)
+                        context.write(outKey, one)
+                    case _ =>
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Lớp IntSumReducer}
+
+\textbf{Nhiệm vụ:} Tổng hợp số lần xuất hiện của mỗi ký tự đầu. Sử dụng \texttt{LinkedHashMap} để duy trì thứ tự xuất ra theo đúng thứ tự \texttt{f, i, t, h, c, m, u, s} thay vì thứ tự bảng chữ cái mặc định của Hadoop shuffle.
+
+\begin{lstlisting}[style=scalastyle, caption={Lớp IntSumReducer --- gom cụm và duy trì thứ tự xuất ra}]
+class IntSumReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
+    private val result = new IntWritable()
+    private val targetChars = Vector('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
+    private val counts = mutable.LinkedHashMap(
+        targetChars.map(ch => ch -> 0): _*
+    )
+
+    override def reduce(key: Text, values: java.lang.Iterable[IntWritable],
+            context: Reducer[Text, IntWritable, Text, IntWritable]#Context
+    ): Unit = {
+        var sum = 0
+        val iterator = values.iterator()
+        while (iterator.hasNext) { sum += iterator.next().get() }
+        val first = key.toString.charAt(0)
+        if (counts.contains(first)) { counts.update(first, sum) }
+    }
+
+    override def cleanup(
+            context: Reducer[Text, IntWritable, Text, IntWritable]#Context
+    ): Unit = {
+        counts.foreach { case (ch, sum) =>
+            result.set(sum)
+            context.write(new Text(ch.toString), result)
+        }
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Object FilterWordCount (Driver)}
+
+\textbf{Nhiệm vụ:} Cấu hình và submit Job lên YARN. Chỉ định đường dẫn input/output, gán các lớp Mapper, Reducer và kiểu dữ liệu đầu ra.
+
+\begin{lstlisting}[style=scalastyle, caption={Driver --- cấu hình và submit MapReduce Job lên YARN}]
+object FilterWordCount {
+    def main(args: Array[String]): Unit = {
+        val conf = new Configuration()
+        val job = Job.getInstance(conf, "filter word count fit hcmus")
+        job.setJarByClass(this.getClass)
+        job.setMapperClass(classOf[TokenizerMapper])
+        job.setReducerClass(classOf[IntSumReducer])
+        job.setNumReduceTasks(1)
+        job.setOutputKeyClass(classOf[Text])
+        job.setOutputValueClass(classOf[IntWritable])
+        FileInputFormat.addInputPath(job, new Path(args(0)))
+        FileOutputFormat.setOutputPath(job, new Path(args(1)))
+        System.exit(if (job.waitForCompletion(true)) 0 else 1)
+    }
+}
+\end{lstlisting}
+
+% -------------------------------------------------------
+\subsection{Bước 4: Biên dịch mã nguồn Scala và đóng gói JAR}
+
+\textbf{Mục đích:} Chuyển mã nguồn Scala thành bytecode JVM (\texttt{.class}), sau đó đóng gói tất cả thành một file \texttt{.jar} di động để Hadoop có thể phân phối đến các node worker.
+
+\textbf{Các lệnh thực hiện:}
+\begin{enumerate}
+    \item \texttt{scalac -classpath \$(hadoop classpath)}: Biên dịch Scala với classpath đầy đủ của Hadoop để trình biên dịch nhận biết các thư viện \texttt{org.apache.hadoop.*}.
+    \item \texttt{jar -cvf}: Đóng gói tất cả file \texttt{*.class} thành \texttt{WordCount.jar}.
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Biên dịch Scala và đóng gói thành WordCount.jar}]
+mkdir wordcount_project && cd wordcount_project
+scalac -classpath $(hadoop classpath) FilterWordCount.scala
+ls
+jar -cvf WordCount.jar *.class
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_3_compile_scala.png}
+    \caption{VSCode hiển thị kết quả biên dịch --- 7 file \texttt{.class} được tạo ra tương ứng với các lớp và anonymous functions}
+    \label{fig:scalac_compile}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_4_create_jar.png}
+    \caption{Lệnh \texttt{jar -cvf} đóng gói thành công tất cả các file \texttt{.class} vào \texttt{WordCount.jar}}
+    \label{fig:jar_create}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 5: Chạy MapReduce Job và xử lý sự cố ClassPath}
+
+\subsubsection{Lần chạy 1 --- Lỗi ClassNotFoundException (Scala Runtime)}
+
+\begin{lstlisting}[style=bashstyle, caption={Chạy MapReduce Job lần đầu}]
+hadoop jar WordCount.jar FilterWordCount /hcmus/23120166/input /hcmus/23120166/output
+\end{lstlisting}
+
+\textbf{Vấn đề:} Job thất bại với lỗi \texttt{java.lang.NoClassDefFoundError: scala/collection/Seq}.
+
+\textbf{Nguyên nhân:} Thư viện runtime của Scala (\texttt{scala-library.jar}) không nằm trong classpath của Hadoop khi khởi động Job. Hadoop chỉ load các thư viện trong \texttt{\$HADOOP\_HOME/lib/} và classpath mặc định, không bao gồm thư viện Scala đã cài trên hệ thống.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_5_job_class_not_found.png}
+    \caption{MapReduce Job thất bại với \texttt{NoClassDefFoundError: scala/collection/Seq} --- thiếu Scala Runtime Library trong Hadoop classpath}
+    \label{fig:scala_error}
+\end{figure}
+
+\subsubsection{Tra cứu giải pháp}
+
+Tham khảo Stack Overflow, giải pháp được đề xuất là export biến \texttt{HADOOP\_CLASSPATH} trỏ tới file \texttt{scala-library.jar} trước khi chạy lệnh \texttt{hadoop jar}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_6_stackoverflow_classpath.png}
+    \caption{Giải pháp từ Stack Overflow: thêm \texttt{scala-library.jar} vào \texttt{HADOOP\_CLASSPATH} để Hadoop tìm thấy Scala Runtime}
+    \label{fig:stackoverflow_classpath}
+\end{figure}
+
+\subsubsection{Phương án khắc phục}
+
+Tìm vị trí file \texttt{scala-library.jar} trong hệ thống và xuất vào \texttt{HADOOP\_CLASSPATH}:
+
+\begin{lstlisting}[style=bashstyle, caption={Export HADOOP\_CLASSPATH với Scala Runtime và chạy lại Job}]
+hdfs dfs -rm -r /hcmus/23120166/output
+export HADOOP_CLASSPATH=$(find /usr/share -name "scala-library*.jar" | head -n 1)
+hadoop jar WordCount.jar FilterWordCount /hcmus/23120166/input /hcmus/23120166/output
+\end{lstlisting}
+
+\textbf{Lưu ý:} Thư mục output cũ cần xóa trước khi chạy lại vì Hadoop không cho phép ghi đè vào thư mục đã tồn tại.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_7_export_classpath_and_run.png}
+    \caption{Sau khi export \texttt{HADOOP\_CLASSPATH} với \texttt{scala-library.jar}, Job được submit thành công và bắt đầu thực thi}
+    \label{fig:wc_run_success}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 6: Theo dõi tiến trình và kết quả Job}
+
+\textbf{Mục đích:} Xác nhận Job hoàn thành thành công, theo dõi tỉ lệ hoàn thành của pha Map và Reduce, kiểm tra các counter thống kê.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_8_job_success.png}
+    \caption{Job hoàn thành với \texttt{map 100\% reduce 100\%} và thông báo \textit{``Job completed successfully''} --- tất cả 36 counters được ghi nhận}
+    \label{fig:wc_job_complete}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 7: Đọc và lưu kết quả}
+
+\textbf{Mục đích:} Đọc kết quả từ HDFS và lưu về máy local để kiểm tra.
+
+\begin{lstlisting}[style=bashstyle, caption={Đọc kết quả từ HDFS output}]
+hdfs dfs -cat /hcmus/23120166/output/part-r-00000
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{wc_9_hdfs_cat_output.png}
+    \caption{Kết quả đếm từ: \texttt{f=15870, i=15220, t=25223, h=18662, c=38934, m=25194, u=23790, s=50571} --- xuất theo đúng thứ tự FIT HCMUS}
+    \label{fig:wc_output}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{wc_10_results_windows.png}
+    \caption{Windows Explorer xác nhận file \texttt{results.txt} đã được lưu về máy local, cùng với kết quả đếm từ hiển thị bên phải}
+    \label{fig:wc_results_file}
+\end{figure}
+
+\textbf{Nhận xét kết quả:} Các từ bắt đầu bằng ký tự \texttt{s} xuất hiện nhiều nhất (50,571 lần), tiếp theo là \texttt{c} (38,934 lần). Thứ tự xuất ra đúng theo chuỗi \texttt{f, i, t, h, c, m, u, s} nhờ thiết kế dùng \texttt{LinkedHashMap} trong \texttt{IntSumReducer.cleanup()}, cho thấy cơ chế ghi đè thứ tự shuffle của Hadoop hoạt động đúng như thiết kế.

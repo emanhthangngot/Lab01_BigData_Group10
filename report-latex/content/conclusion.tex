@@ -1,0 +1,42 @@
+\section{Kết luận}
+\label{sec:conclusion}
+
+Qua quá trình thực hành Lab 1, đã hoàn thành được các mục tiêu đề ra:
+
+\subsection{Tóm tắt kết quả}
+
+\begin{enumerate}
+    \item \textbf{Cài đặt Hadoop Pseudo-Distributed Mode thành công:}
+    \begin{itemize}
+        \item Cài đặt và cấu hình Java 11, Hadoop 3.3.6 trên WSL/Ubuntu 22.04.
+        \item Cấu hình SSH không cần mật khẩu cho giao tiếp nội bộ.
+        \item Cấu hình đầy đủ 4 file XML: \texttt{core-site.xml}, \texttt{hdfs-site.xml}, \texttt{mapred-site.xml}, \texttt{yarn-site.xml}.
+        \item Khởi động thành công 5 daemon: NameNode, DataNode, SecondaryNameNode, ResourceManager, NodeManager.
+        \item Xác nhận hoạt động qua Web UI (\texttt{localhost:9870}) và lệnh \texttt{jps}.
+    \end{itemize}
+
+    \item \textbf{Thực hiện bài toán Word Count với Scala MapReduce thành công:}
+    \begin{itemize}
+        \item Biên dịch file Scala với Hadoop classpath bằng \texttt{scalac}.
+        \item Đóng gói thành \texttt{WordCount.jar}.
+        \item Chạy MapReduce job trên HDFS và nhận kết quả đếm từ theo ký tự đầu.
+    \end{itemize}
+
+    \item \textbf{Xử lý các lỗi phát sinh trong quá trình thực hành:}
+    \begin{itemize}
+        \item Lỗi \texttt{pdsh: rcmd: Permission denied} $\rightarrow$ khắc phục bằng \texttt{PDSH\_RCMD\_TYPE=ssh}.
+        \item Lỗi \texttt{NoClassDefFoundError: scala/collection/Seq} $\rightarrow$ khắc phục bằng \texttt{HADOOP\_CLASSPATH}.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Kinh nghiệm rút ra}
+
+\begin{itemize}
+    \item \textbf{Về cấu hình môi trường:} Việc thiết lập đúng biến môi trường (\texttt{JAVA\_HOME}, \texttt{HADOOP\_HOME}, \texttt{PDSH\_RCMD\_TYPE}) là nền tảng quan trọng để Hadoop hoạt động ổn định.
+
+    \item \textbf{Về phát triển MapReduce với Scala:} Khi sử dụng ngôn ngữ JVM như Scala với Hadoop, cần chú ý đến việc cung cấp đủ thư viện runtime khi chạy job. Sử dụng \texttt{HADOOP\_CLASSPATH} là cách đơn giản và hiệu quả để giải quyết vấn đề phụ thuộc thư viện.
+
+    \item \textbf{Về thiết kế MapReduce:} Việc dùng \texttt{cleanup()} trong Reducer và \texttt{LinkedHashMap} để đảm bảo thứ tự đầu ra là một kỹ thuật quan trọng khi cần kết quả có thứ tự xác định.
+
+    \item \textbf{Về debugging:} Stack Overflow và tài liệu chính thức của Hadoop là nguồn tài nguyên quan trọng khi gặp lỗi kỹ thuật.
+\end{itemize}

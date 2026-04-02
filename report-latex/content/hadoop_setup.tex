@@ -1,0 +1,431 @@
+\section{Cài đặt Hadoop chế độ giả phân tán (Pseudo-Distributed Mode)}
+\label{sec:hadoop_setup}
+
+Trong phần này, báo cáo trình bày chi tiết từng bước cấu hình Hadoop theo chế độ \textbf{Pseudo-Distributed Mode}. Đây là chế độ triển khai mô phỏng một cụm phân tán (cluster) trên một máy tính vật lý duy nhất. Trong đó, mỗi tiến trình (daemon) của Hadoop như NameNode, DataNode, ResourceManager và NodeManager sẽ được khởi chạy độc lập dưới dạng một tiến trình Java riêng biệt, giúp người phát triển dễ dàng kiểm thử các ứng dụng Big Data trước khi triển khai thực tế.
+
+% -------------------------------------------------------
+\subsection{Bước 1: Cài đặt môi trường Java, SSH và pdsh}
+
+\textbf{Mục đích:} Hadoop được viết bằng ngôn ngữ Java, do đó môi trường thực thi Java (Java Development Kit) là thành phần bắt buộc. Bên cạnh đó, Hadoop sử dụng giao thức SSH để điều phối các tiến trình daemon giữa các node, và công cụ \texttt{pdsh} (Parallel Distributed Shell) để chạy lệnh đồng thời trên nhiều node. Trong môi trường giả phân tán, SSH cũng được dùng để kết nối vào \texttt{localhost}.
+
+\textbf{Các lệnh thực hiện:}
+\begin{enumerate}
+    \item \texttt{sudo apt update}: Cập nhật danh sách các gói phần mềm mới nhất từ kho lưu trữ của Ubuntu.
+    \item \texttt{sudo apt install openjdk-11-jdk ssh pdsh -y}: Cài đặt đồng thời Java 11 JDK, OpenSSH server/client và công cụ pdsh, tham số \texttt{-y} để tự động đồng ý.
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Cài đặt Java 11, SSH và pdsh trên Ubuntu}]
+sudo apt update
+sudo apt install openjdk-11-jdk ssh pdsh -y
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ps_1_install_java_ssh_pdsh.png}
+    \caption{Quá trình cài đặt đồng thời OpenJDK 11, SSH và pdsh qua \texttt{apt}}
+    \label{fig:install_java_ssh_pdsh}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 2: Thiết lập SSH không cần mật khẩu}
+
+\textbf{Mục đích:} Hadoop cần sử dụng chuẩn kết nối SSH để quản lý các node (thậm chí là trên cùng một máy localhost). Việc thiết lập SSH không cần mật khẩu giúp các lệnh khởi động tự động (như \texttt{start-dfs.sh}) có thể làm việc trơn tru mà không bị gián đoạn bởi yêu cầu nhập mật khẩu.
+
+\textbf{Các lệnh thực hiện:}
+\begin{enumerate}
+    \item \texttt{ssh-keygen}: Tạo cặp khóa RSA (\texttt{-t rsa}), không đặt mật khẩu (\texttt{-P ''}).
+    \item \texttt{cat ... >> authorized\_keys}: Đưa public key vào danh sách khóa được phép truy cập tự động.
+    \item \texttt{chmod 0600}: Đặt quyền file chỉ đọc/ghi bởi chủ sở hữu (yêu cầu bảo mật SSH).
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Tạo SSH key và cấu hình đăng nhập tự động vào localhost}]
+ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{ps_2_ssh_keygen.png}
+    \caption{Kết quả tạo cặp khóa RSA 3072-bit và fingerprint tương ứng}
+    \label{fig:ssh_keygen}
+\end{figure}
+
+\textbf{Kiểm tra kết nối SSH:} Thực hiện lệnh \texttt{ssh localhost} để xác nhận kết nối thành công không yêu cầu mật khẩu.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_3_ssh_localhost.png}
+    \caption{SSH vào localhost thành công --- hệ thống đã thêm host vào danh sách known hosts và đăng nhập trực tiếp không cần mật khẩu}
+    \label{fig:ssh_localhost}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 3: Tải và giải nén Apache Hadoop 3.3.6}
+
+\textbf{Mục đích:} Lấy bộ mã nguồn đã biên dịch của Hadoop từ máy chủ chính thức của Apache và thiết lập thư mục làm việc chính cho Hadoop trên hệ thống (tại \texttt{\textasciitilde/hadoop}).
+
+\textbf{Các lệnh thực hiện:}
+\begin{enumerate}
+    \item \texttt{wget}: Lệnh tải file \texttt{tar.gz} từ URL chỉ định của Apache.
+    \item \texttt{tar -xzf}: Giải nén file (\texttt{-x}: extract, \texttt{-z}: qua gzip, \texttt{-f}: chỉ định file).
+    \item \texttt{mv}: Đổi tên thư mục mặc định sang \texttt{\textasciitilde/hadoop} để thuận tiện cấu hình.
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Tải và giải nén Hadoop 3.3.6}]
+wget https://downloads.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+tar -xzf hadoop-3.3.6.tar.gz
+mv hadoop-3.3.6 ~/hadoop
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ps_4_wget_hadoop.png}
+    \caption{Tải thành công Hadoop 3.3.6 (696 MB) từ máy chủ Apache với tốc độ 7.25 MB/s}
+    \label{fig:wget_hadoop}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ps_5_tar_and_mv.png}
+    \caption{Giải nén và đổi tên thư mục Hadoop về \texttt{\textasciitilde/hadoop}}
+    \label{fig:tar_mv}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 4: Kiểm tra phiên bản và thiết lập biến môi trường}
+
+\textbf{Mục đích:} Biến môi trường giúp hệ điều hành biết vị trí cài đặt Java và Hadoop để có thể gọi các lệnh như \texttt{hdfs}, \texttt{hadoop}, \texttt{start-dfs.sh} từ bất kỳ thư mục nào.
+
+\textbf{Chi tiết cấu hình trong \texttt{\textasciitilde/.bashrc}:}
+\begin{itemize}
+    \item \texttt{JAVA\_HOME}: Trỏ tới thư mục cài đặt gốc của OpenJDK 11.
+    \item \texttt{HADOOP\_HOME}: Trỏ tới thư mục vừa giải nén.
+    \item \texttt{PATH}: Bổ sung các thư mục \texttt{bin} và \texttt{sbin} của Hadoop.
+    \item \texttt{HADOOP\_CONF\_DIR}: Trỏ tới thư mục chứa các file cấu hình XML.
+\end{itemize}
+
+\begin{lstlisting}[style=bashstyle, caption={Cấu hình biến môi trường trong \textasciitilde/.bashrc}]
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HADOOP_HOME=~/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+\end{lstlisting}
+
+\textbf{Áp dụng và kiểm tra:} Sau khi lưu file, dùng \texttt{source} để áp dụng ngay, kiểm tra bằng \texttt{java -version} và \texttt{hadoop version}.
+
+\begin{lstlisting}[style=bashstyle, caption={Áp dụng cấu hình và kiểm tra phiên bản}]
+source ~/.bashrc
+java -version
+hadoop version
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_6_check_versions.png}
+    \caption{Xác nhận Java 11 và Hadoop 3.3.6 đã được nhận diện chính xác sau khi cấu hình}
+    \label{fig:check_versions}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 5: Cấu hình các file XML của Hadoop}
+
+Hadoop được điều khiển bởi tập hợp các file XML nằm trong \texttt{\$HADOOP\_HOME/etc/hadoop/}.
+
+\subsubsection{File \texttt{hadoop-env.sh}}
+\textbf{Mục đích:} Khai báo cứng đường dẫn \texttt{JAVA\_HOME} trong file cấu hình môi trường riêng của Hadoop, đảm bảo các tiến trình daemon sử dụng đúng JVM.
+
+\begin{lstlisting}[style=bashstyle, caption={Khai báo JAVA\_HOME trong hadoop-env.sh}]
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_9_hadoop_env.png}
+    \caption{Chỉnh sửa \texttt{hadoop-env.sh} với \texttt{nano} để khai báo \texttt{JAVA\_HOME}}
+    \label{fig:hadoop_env}
+\end{figure}
+
+\subsubsection{File \texttt{core-site.xml}}
+\textbf{Mục đích:} Định nghĩa URI phân giải của filesystem mặc định (NameNode). Mọi truy vấn \texttt{hdfs://} sẽ được trỏ tới cổng 9000 trên localhost.
+
+\begin{lstlisting}[style=xmlstyle, caption={Nội dung file core-site.xml}]
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_10_core_site.png}
+    \caption{Chỉnh sửa \texttt{core-site.xml} --- cấu hình NameNode tại \texttt{hdfs://localhost:9000}}
+    \label{fig:core_site}
+\end{figure}
+
+\subsubsection{File \texttt{hdfs-site.xml}}
+\textbf{Mục đích:} Quản lý cấu hình HDFS. Trong chế độ giả phân tán chỉ có 1 DataNode nên hệ số nhân bản (Replication Factor) buộc phải là 1.
+
+\begin{lstlisting}[style=xmlstyle, caption={Nội dung file hdfs-site.xml}]
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+</configuration>
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_11_hdfs_site.png}
+    \caption{Chỉnh sửa \texttt{hdfs-site.xml} --- đặt hệ số nhân bản bằng 1}
+    \label{fig:hdfs_site}
+\end{figure}
+
+\subsubsection{File \texttt{mapred-site.xml} và \texttt{yarn-site.xml}}
+\textbf{Mục đích:} Cấu hình framework tính toán phân tán. Sử dụng YARN làm hệ thống quản lý tài nguyên và bộ điều phối tác vụ MapReduce.
+
+\begin{lstlisting}[style=xmlstyle, caption={Tích hợp YARN trong mapred-site.xml}]
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+</configuration>
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_7_bashrc_config.png}
+    \caption{Chỉnh sửa \texttt{\textasciitilde/.bashrc} để khai báo đầy đủ biến môi trường Hadoop}
+    \label{fig:bashrc_config}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_8_bashrc_source.png}
+    \caption{Di chuyển thư mục Hadoop, áp dụng \texttt{source \textasciitilde/.bashrc} và xác nhận cấu hình}
+    \label{fig:bashrc_source}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 6: Khởi tạo HDFS (Format NameNode)}
+
+\textbf{Mục đích:} Trước khi HDFS có thể hoạt động lần đầu tiên, hệ thống cần tạo cấu trúc metadata gốc bao gồm file \texttt{fsimage} (ảnh chụp trạng thái namespace) và thư mục lưu trữ local của NameNode. Thao tác này chỉ thực hiện một lần duy nhất và không được lặp lại khi đã có dữ liệu.
+
+\begin{lstlisting}[style=bashstyle, caption={Format HDFS lần đầu}]
+hdfs namenode -format
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_12_config_overview.png}
+    \caption{Tổng quan quá trình chỉnh sửa tuần tự các file cấu hình với \texttt{nano} trước khi format}
+    \label{fig:config_overview}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_13_namenode_format.png}
+    \caption{Thông báo \textit{``Storage directory has been successfully formatted''} --- HDFS sẵn sàng hoạt động}
+    \label{fig:namenode_format}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 7: Xử lý sự cố \texttt{pdsh} và khởi động cụm}
+
+\subsubsection{Lỗi kết nối \texttt{pdsh} (Permission denied)}
+\textbf{Vấn đề:} Khi thực thi \texttt{start-dfs.sh} để bật các thành phần lưu trữ, lệnh bị từ chối với thông báo \texttt{Permission denied}.
+
+\textbf{Nguyên nhân:} Mặc định Hadoop sử dụng \texttt{pdsh} ưu tiên giao thức \texttt{rsh} (Remote Shell) thay vì \texttt{ssh}. Giao thức \texttt{rsh} không hỗ trợ xác thực bằng public key RSA đã thiết lập ở Bước 2, dẫn đến từ chối kết nối.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_14_start_dfs_error.png}
+    \caption{Lỗi \texttt{rcmd: socket: Permission denied} khi chạy \texttt{start-dfs.sh} với \texttt{pdsh} mặc định dùng \texttt{rsh}}
+    \label{fig:pdsh_error}
+\end{figure}
+
+\subsubsection{Tra cứu và tìm phương án khắc phục}
+
+Tham khảo giải pháp từ cộng đồng Stack Overflow, phương án được đánh giá cao nhất là ép buộc \texttt{pdsh} sử dụng \texttt{ssh} thay vì \texttt{rsh} thông qua biến môi trường \texttt{PDSH\_RCMD\_TYPE}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_15_pdsh_stackoverflow.png}
+    \caption{Giải pháp từ Stack Overflow: đặt \texttt{HADOOP\_CLASSPATH} hoặc \texttt{PDSH\_RCMD\_TYPE=ssh} để khắc phục lỗi \texttt{pdsh}}
+    \label{fig:pdsh_stackoverflow}
+\end{figure}
+
+\subsubsection{Phương án khắc phục}
+\textbf{Giải quyết:} Thêm biến \texttt{PDSH\_RCMD\_TYPE=ssh} vào \texttt{\textasciitilde/.bashrc} để đảm bảo hiệu lực vĩnh viễn giữa các phiên làm việc.
+
+\begin{lstlisting}[style=bashstyle, caption={Khắc phục lỗi pdsh bằng cách chỉ định giao thức SSH}]
+echo 'export PDSH_RCMD_TYPE=ssh' >> ~/.bashrc
+source ~/.bashrc
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_16_bashrc_pdsh_fix.png}
+    \caption{Thêm \texttt{export PDSH\_RCMD\_TYPE=ssh} vào \texttt{\textasciitilde/.bashrc} để sửa lỗi \texttt{pdsh}}
+    \label{fig:bashrc_pdsh_fix}
+\end{figure}
+
+\subsubsection{Khởi động lại tiến trình của Hadoop}
+
+Sau khi áp dụng fix, lệnh \texttt{start-dfs.sh} khởi động thành công NameNode, DataNode và SecondaryNameNode. Tiếp theo khởi động YARN bằng \texttt{start-yarn.sh} và dùng \texttt{jps} để xác nhận tất cả daemon đang chạy.
+
+\begin{lstlisting}[style=bashstyle, caption={Khởi chạy DFS và YARN, kiểm tra tiến trình}]
+start-dfs.sh
+start-yarn.sh
+jps
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_17_start_dfs_success.png}
+    \caption{Lệnh \texttt{start-dfs.sh} sau khi fix --- NameNode, DataNode và SecondaryNameNode khởi động thành công}
+    \label{fig:start_dfs_success}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{ps_18_start_yarn_jps.png}
+    \caption{Lệnh \texttt{jps} trả về đủ 5 thành phần lõi: DataNode, NameNode, SecondaryNameNode, ResourceManager và NodeManager}
+    \label{fig:jps_all}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 8: Khảo sát hệ thống qua Web UI}
+
+\textbf{Mục đích:} HDFS cung cấp giao diện Web UI tại cổng \textbf{9870} để theo dõi trạng thái cụm theo thời gian thực. Đây là công cụ quan trọng để kiểm tra sức khỏe hệ thống, dung lượng lưu trữ, và số lượng DataNode đang hoạt động.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_19_namenode_ui.png}
+    \caption{Trang tổng quan HDFS tại \texttt{localhost:9870} --- hiển thị trạng thái Active, thông tin dung lượng lưu trữ}
+    \label{fig:namenode_ui}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_20_datanode_ui.png}
+    \caption{Tab Datanodes xác nhận 1 DataNode đang ở trạng thái \textit{In Service} --- cụm giả phân tán đang hoạt động bình thường}
+    \label{fig:datanode_ui}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 9: Thao tác tệp trên HDFS và kiểm tra phân quyền}
+
+\textbf{Mục đích:} Xây dựng hệ thống phân cấp thư mục trên HDFS, tạo người dùng và file thử nghiệm, đồng thời kiểm tra cơ chế quản lý quyền truy cập phân tán của Hadoop.
+
+\textbf{Các lệnh và ý nghĩa:}
+\begin{enumerate}
+    \item \texttt{hdfs dfs -mkdir}: Tạo cây thư mục logic trên HDFS cho mã số sinh viên.
+    \item \texttt{sudo useradd -m}: Tạo user Unix \texttt{khtn\_23120166} với thư mục home.
+    \item \texttt{echo ... >} và \texttt{-put}: Tạo file local rồi đẩy lên HDFS bằng \texttt{-put}.
+    \item \texttt{-chmod 744}: Cấp quyền đọc/ghi cho chủ sở hữu, quyền đọc cho nhóm và người khác.
+    \item \texttt{-chown}: Bàn giao quyền sở hữu HDFS cho user \texttt{khtn\_23120166}.
+\end{enumerate}
+
+\begin{lstlisting}[style=bashstyle, caption={Tạo thư mục và thao tác file trên HDFS}]
+hdfs dfs -mkdir /hcmus
+sudo useradd -m khtn_23120166
+hdfs dfs -mkdir /hcmus/23120166
+echo "Hello Big Data from 23120166" > test_file.txt
+hdfs dfs -put test_file.txt /hcmus/23120166/
+hdfs dfs -chmod 744 /hcmus/23120166
+hdfs dfs -chown -R khtn_23120166 /hcmus/23120166
+hdfs dfs -ls /hcmus
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_21_hdfs_mkdir_put.png}
+    \caption{Thực hiện thành công chuỗi lệnh tạo thư mục, upload file và cấp quyền trên HDFS}
+    \label{fig:hdfs_operations}
+\end{figure}
+
+% -------------------------------------------------------
+\subsection{Bước 10: Vận hành cơ chế sinh tệp kiểm tra (Verification)}
+
+\textbf{Mục đích:} Chạy chương trình Java kiểm tra (\texttt{hadoop-test.jar}) được cung cấp sẵn để xác minh Hadoop hoạt động đúng và sinh ra file định danh chứa địa chỉ MAC của máy.
+
+\subsubsection{Chuẩn bị file JAR}
+
+File \texttt{hadoop-test.jar} được đặt sẵn trong thư mục home của WSL. File này đọc dữ liệu từ đường dẫn HDFS được chỉ định, kiểm tra thông tin mạng và sinh ra file \texttt{23120166\_verification.txt} chứa địa chỉ MAC.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ps_22_windows_jar.png}
+    \caption{Thư mục home của WSL từ Windows Explorer --- có đủ file \texttt{hadoop-test.jar} và \texttt{test\_file.txt}}
+    \label{fig:windows_jar}
+\end{figure}
+
+\subsubsection{Lần chạy 1 --- Lỗi phân quyền (Permission denied)}
+
+\begin{lstlisting}[style=bashstyle, caption={Chạy thử jar lần 1}]
+java -jar hadoop-test.jar 9000 /hcmus/23120166
+\end{lstlisting}
+
+\textbf{Nguyên nhân:} Lỗi \texttt{Ensure the permission is set to 744} --- quyền trên thư mục HDFS chưa được đặt đệ quy.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ps_23_java_jar_permission_error.png}
+    \caption{Lần chạy 1: Chương trình yêu cầu quyền 744 nhưng chưa được đặt đệ quy}
+    \label{fig:jar_run1}
+\end{figure}
+
+\subsubsection{Lần chạy 2 --- Lỗi quyền sở hữu (Owner mismatch)}
+
+Sau khi đặt \texttt{-chmod -R 744}, chạy lại jar:
+
+\begin{lstlisting}[style=bashstyle, caption={Chạy thử jar lần 2 sau khi cấp quyền}]
+hdfs dfs -chmod -R 744 /hcmus/23120166
+java -jar hadoop-test.jar 9000 /hcmus/23120166
+\end{lstlisting}
+
+\textbf{Nguyên nhân:} Lỗi \texttt{The owner ... is not khtn\_23120166} --- cần đổi chủ sở hữu đệ quy bằng \texttt{-chown -R}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{ps_24_java_jar_owner_error.png}
+    \caption{Lần chạy 2: Quyền 744 đã đúng nhưng chủ sở hữu file HDFS vẫn chưa khớp với \texttt{khtn\_23120166}}
+    \label{fig:jar_run2}
+\end{figure}
+
+\subsubsection{Lần chạy 3 --- Thành công, sinh file Verification}
+
+\begin{lstlisting}[style=bashstyle, caption={Sửa quyền chủ sở hữu đệ quy và chạy jar lần 3}]
+hdfs dfs -chown -R khtn_23120166 /hcmus/23120166
+java -jar hadoop-test.jar 9000 /hcmus/23120166
+\end{lstlisting}
+
+\textbf{Lưu ý về cảnh báo mạng:} Trong output của lần chạy thành công, xuất hiện hai dòng cảnh báo:
+\begin{quotation}
+\textit{The first method to get MAC address is failed: Could not get network interface}\\[2pt]
+\textit{Trying the alternative method}
+\end{quotation}
+Đây là hành vi bình thường trong môi trường WSL. Do kiến trúc mạng ảo hóa của WSL, máy ảo Java không thể truy xuất địa chỉ MAC trực tiếp qua giao diện mạng thông thường. Tuy nhiên, chương trình \texttt{hadoop-test.jar} đã được lập trình sẵn cơ chế dự phòng (alternative method) để thu thập thông tin mạng theo cách khác, và vẫn xuất ra file xác thực thành công.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_25_java_jar_success_verification.png}
+    \caption{Lần chạy 3: Chương trình trả về \textit{``Your student ID: 23120166''} --- cảnh báo MAC bình thường trong WSL, cơ chế dự phòng hoạt động và sinh file \texttt{23120166\_verification.txt} thành công}
+    \label{fig:jar_success}
+\end{figure}
+
+\subsubsection{Kiểm tra file kết quả}
+
+File \texttt{23120166\_verification.txt} chứa địa chỉ MAC của máy ảo WSL, dùng làm bằng chứng thực hành.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{ps_26_windows_verification.png}
+    \caption{File \texttt{23120166\_verification.txt} chứa địa chỉ MAC \texttt{00-15-5D-35-19-75} --- minh chứng hoàn thành bài thực hành trên máy cụ thể}
+    \label{fig:verification_file}
+\end{figure}

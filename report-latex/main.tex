@@ -1,0 +1,46 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage{hcmus-report-template}
+
+% Disable indentation on new paragraphs
+\setlength{\parindent}{0pt}
+
+% Line spacing 1.5
+\renewcommand{\baselinestretch}{1.5}
+
+% Graphic path
+\graphicspath{{img/}}
+
+% Define course name, report name and report title.
+\newcommand{\coursename}{CSC14118 - Nhập môn Big Data}
+\newcommand{\reporttitle}{Báo cáo Lab 1}
+
+% Header
+\lhead{\reporttitle}
+\rhead{\coursename}
+
+% ============ DOCUMENT ============
+\begin{document}
+
+\pagenumbering{roman}
+\input{content/title.tex}
+
+\tableofcontents
+\pagebreak
+\listoffigures
+\pagebreak
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\input{content/introduction.tex}
+\input{content/hadoop_setup.tex}
+\input{content/wordcount.tex}
+\input{content/conclusion.tex}
+
+% Appendix
+\appendix
+\cleardoublepage
+\input{appendix/appendix.tex}
+
+\end{document}
