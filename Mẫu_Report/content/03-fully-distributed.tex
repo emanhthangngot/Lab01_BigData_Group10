@@ -15,9 +15,9 @@ tiến trình lưu trữ và tính toán (DataNode, NodeManager).
 \toprule
 \textbf{Node} & \textbf{Vai trò} & \textbf{Địa chỉ IP} \\
 \midrule
-master (23120099) & NameNode / ResourceManager & TODO \\
-worker1 (B)       & DataNode / NodeManager     & TODO \\
-worker2 (C/D)     & DataNode / NodeManager     & TODO \\
+master (23120099) & NameNode / ResourceManager & 100.95.242.89 \\
+tuanho            & DataNode / NodeManager     & 100.81.238.8 \\
+msi               & DataNode / NodeManager     & 100.101.144.37 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -31,10 +31,9 @@ sang IP tương ứng. Ví dụ nội dung file \texttt{/etc/hosts} trên node M
 
 \begin{minted}{bash}
 # Cấu hình /etc/hosts cho cụm Hadoop fully-distributed
-# TODO: thay TODO bằng IP thực tế của từng node
-TODO    master
-TODO    worker1
-TODO    worker2
+100.95.242.89    master
+100.81.238.8     tuanho
+100.101.144.37   msi
 \end{minted}
 
 Tiếp theo, tôi cấu hình SSH không mật khẩu (passwordless SSH) từ Master đến tất cả
@@ -46,20 +45,20 @@ SSH vào từng Worker để khởi động daemon mà không cần nhập mật
 ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
 
 # Sao chép public key sang từng Worker (thay username và IP thực tế)
-ssh-copy-id username@worker1
-ssh-copy-id username@worker2
+ssh-copy-id tuanho@tuanho
+ssh-copy-id truc2005@msi
 
 # Kiểm tra kết nối SSH không mật khẩu
-ssh username@worker1 "hostname"
-ssh username@worker2 "hostname"
+ssh tuanho@tuanho "hostname"
+ssh truc2005@msi "hostname"
 \end{minted}
 
 Nội dung file \texttt{\$HADOOP\_HOME/etc/hadoop/workers} cần được cập nhật để liệt
 kê tên hoặc IP của các Worker node:
 
 \begin{minted}{bash}
-worker1
-worker2
+tuanho
+msi
 \end{minted}
 
 Đối với \texttt{core-site.xml}, giá trị của \texttt{fs.defaultFS} cần được đổi từ
@@ -103,8 +102,8 @@ Sau khi khởi động, tôi kiểm tra trạng thái trên từng node bằng \
 jps
 
 # Trên mỗi Worker — kỳ vọng có: DataNode, NodeManager
-ssh username@worker1 "jps"
-ssh username@worker2 "jps"
+ssh tuanho@tuanho "jps"
+ssh truc2005@msi "jps"
 \end{minted}
 
 Giao diện WebUI của NameNode có thể truy cập tại
