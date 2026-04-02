@@ -20,10 +20,11 @@ mô hình fully-distributed nhiều node. Đây là nền tảng thực hành kh
         tài nguyên khỏi quản lý job, giúp YARN hỗ trợ nhiều framework (MapReduce,
         Spark, Flink) trên cùng một cluster.
 
-  \item \textbf{Mô hình MapReduce và Spark}: qua bài toán WordCount, tôi thực hành
-        triển khai mô hình lập trình phân tán theo paradigm Map-Reduce. Spark với
-        API RDD cho phép xử lý dữ liệu in-memory, nhanh hơn đáng kể so với
-        MapReduce truyền thống khi xử lý các tác vụ lặp lại (iterative).
+  \item \textbf{Mô hình MapReduce}: Qua bài toán WordCount, tôi thực hành
+        triển khai mô hình lập trình phân tán theo paradigm Map-Reduce. Tôi hiểu rõ 
+        cách dữ liệu được phân mảnh (Split) và xử lý độc lập ở giai đoạn Map, sau đó
+        được nhóm (Shuffle \& Sort) trước khi tổng hợp ở giai đoạn Reduce. Việc tùy biến 
+        Custom Comparator cũng giúp tôi hiểu thêm luồng xử lý sâu bên trong Hadoop.
 
   \item \textbf{Quản lý phân quyền HDFS}: hệ thống phân quyền của HDFS tương tự
         Unix (owner, group, others) nhưng vận hành trong môi trường phân tán, đòi
@@ -41,6 +42,6 @@ ra, việc sử dụng Arch Linux — hệ điều hành không phổ biến tro
 hỏi phải tìm hiểu thêm để cấu hình đúng.
 
 Kinh nghiệm thực hành qua bài lab này là bước đệm quan trọng để tiếp cận các chủ
-đề nâng cao hơn trong môn học, bao gồm tối ưu hóa job Spark, tuning cấu hình YARN,
+đề nâng cao hơn trong môn học, bao gồm tối ưu hóa job MapReduce, tuning cấu hình YARN,
 và tích hợp Hadoop với các hệ thống lưu trữ và xử lý hiện đại như Hive, HBase, và
 Kafka.

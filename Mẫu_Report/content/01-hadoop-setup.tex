@@ -46,8 +46,8 @@ ip addr
 Hadoop yêu cầu Java Runtime Environment để vận hành vì toàn bộ hệ sinh thái Hadoop
 được viết bằng Java. Tôi chọn OpenJDK 11 vì đây là phiên bản LTS được Hadoop 3.4.0
 hỗ trợ chính thức và đã được kiểm chứng ổn định. Scala được cài đặt để phục vụ cho
-việc lập trình WordCount bằng Apache Spark ở phần sau, vì Spark được viết bằng Scala
-và hỗ trợ API Scala tốt nhất.
+việc lập trình WordCount bằng Hadoop MapReduce ở phần sau, tận dụng khả năng lập trình
+hàm và cú pháp ngắn gọn của Scala cho API MapReduce thay vì Java thuần.
 
 \begin{minted}{bash}
 sudo pacman -S jre11-openjdk jdk11-openjdk

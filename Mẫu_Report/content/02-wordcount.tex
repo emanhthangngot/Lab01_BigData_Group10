@@ -1,4 +1,4 @@
-\section{WordCount bằng Scala}
+\section{WordCount bằng Scala (Hadoop MapReduce)}
 
 % ------------------------------------------------------------
 \subsection{Giới thiệu bài toán}
@@ -12,101 +12,113 @@ biệt hoa thường). Chương trình cần thỏa mãn các ràng buộc sau:
         \texttt{hdfs://localhost:9000/hcmus/23120099/words.txt}
   \item Phân tách từ bằng dấu cách (không dùng biểu thức chính quy)
   \item Chuyển tất cả từ về chữ thường trước khi kiểm tra
-  \item Kết quả đầu ra: file \texttt{results.txt} có định dạng TSV (tab-separated),
-        mỗi dòng gồm một chữ cái và số đếm tương ứng, tổng cộng 8 dòng
-  \item Kết quả được sắp xếp theo thứ tự bảng chữ cái
+  \item Kết quả đầu ra: file output trên HDFS chứa định dạng TSV (tab-separated),
+        mỗi dòng gồm một chữ cái và số đếm tương ứng, tổng cộng 8 dòng. Tự động trích
+        xuất về local file \texttt{results.txt}.
+  \item Kết quả được sắp xếp theo thứ tự yêu cầu đề bài: f, i, t, h, c, m, u, s
 \end{itemize}
 
-Tôi sử dụng Apache Spark với ngôn ngữ Scala để thực hiện bài toán này vì Spark cung
-cấp API RDD (Resilient Distributed Dataset) mạnh mẽ, phù hợp cho xử lý dữ liệu
-phân tán quy mô lớn.
+Tôi sử dụng Hadoop MapReduce API thuần tuý kết hợp ngôn ngữ Scala để thực hiện bài toán 
+theo đúng hướng dẫn của đề bài, giúp hiểu rõ cơ chế Mapper, Reducer, và Custom Comparator
+phân tán.
 
 % ------------------------------------------------------------
 \subsection{Mã nguồn Scala (WordCount.scala)}
 
-Dưới đây là toàn bộ mã nguồn chương trình WordCount được viết bằng Scala, sử dụng
-Apache Spark:
+Dưới đây là toàn bộ mã nguồn chương trình WordCount được viết bằng Scala, hiện thực
+trực tiếp API Hadoop MapReduce:
 
 \begin{minted}[linenos]{scala}
-// Nhập các thư viện cần thiết của Apache Spark
-import org.apache.spark.{SparkConf, SparkContext}
+import java.lang.Iterable
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.{IntWritable, LongWritable, Text, WritableComparable, WritableComparator}
+import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
+import scala.collection.JavaConverters._
 
-// Đối tượng chính của chương trình
+// Lớp CustomSortComparator: So sánh khoá để sắp xếp output theo thứ tự (f, i, t, h, c, m, u, s)
+class CustomSortComparator extends WritableComparator(classOf[Text], true) {
+  private val order = Map("f" -> 1, "i" -> 2, "t" -> 3, "h" -> 4, "c" -> 5, "m" -> 6, "u" -> 7, "s" -> 8)
+
+  override def compare(a: WritableComparable[_], b: WritableComparable[_]): Int = {
+    val key1 = a.asInstanceOf[Text].toString
+    val key2 = b.asInstanceOf[Text].toString
+
+    val val1 = order.getOrElse(key1, 99)
+    val val2 = order.getOrElse(key2, 99)
+
+    val1.compareTo(val2)
+  }
+}
+
+// Lớp TokenizerMapper: Kế thừa Mapper, phân tách dữ liệu và phát sinh cặp (key, value)
+class TokenizerMapper extends Mapper[LongWritable, Text, Text, IntWritable] {
+  private val one = new IntWritable(1)
+  private val wordKey = new Text()
+
+  private val targetChars = Set('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
+
+  override def map(key: LongWritable, value: Text, context: Mapper[LongWritable, Text, Text, IntWritable]#Context): Unit = {
+    val words = value.toString.split(" ")
+
+    for (w <- words) {
+      val trimmed = w.trim
+      if (trimmed.nonEmpty) {
+        val lower = trimmed.toLowerCase
+        val firstChar = lower.charAt(0)
+
+        // Tra cứu O(1) tập chữ cái mục tiêu
+        if (targetChars.contains(firstChar)) {
+          wordKey.set(firstChar.toString)
+          context.write(wordKey, one) // Phát (key, 1) ra Reducer
+        }
+      }
+    }
+  }
+}
+
+// Lớp IntSumReducer: Kế thừa Reducer, tổng hợp kết quả count từng chữ cái
+class IntSumReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
+  override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
+    var sum = 0
+    for (value <- values.asScala) {
+      sum += value.get()
+    }
+    context.write(key, new IntWritable(sum))
+  }
+}
+
+// Đối tượng WordCount chứa hàm main để chạy Driver Job
 object WordCount {
-
-  // Danh sách 8 chữ cái cần đếm theo yêu cầu bài lab
-  val TARGET_LETTERS: Set[Char] = Set('f', 'i', 't', 'h', 'c', 'm', 'u', 's')
-
   def main(args: Array[String]): Unit = {
+    val conf = new Configuration()
+    val job = Job.getInstance(conf, "KHTN Word Count")
 
-    // Bước 1: Khởi tạo cấu hình Spark với tên ứng dụng
-    val conf = new SparkConf()
-      .setAppName("WordCount_23120099")   // Tên hiển thị trên YARN/Spark UI
-      .setMaster("local[*]")             // Chạy local, dùng toàn bộ CPU core
+    job.setJarByClass(this.getClass)
+    job.setMapperClass(classOf[TokenizerMapper])
+    job.setCombinerClass(classOf[IntSumReducer])
+    job.setReducerClass(classOf[IntSumReducer])
 
-    // Bước 2: Tạo SparkContext — điểm khởi đầu của mọi Spark job
-    val sc = new SparkContext(conf)
-    sc.setLogLevel("WARN")               // Giảm log spam để dễ đọc output
+    // Sử dụng Custom Comparator để can thiệp vào giai đoạn Sort trước khi vào Reducer
+    job.setSortComparatorClass(classOf[CustomSortComparator])
 
-    // Bước 3: Đọc file words.txt từ HDFS
-    // Hadoop đã cấu hình ở localhost:9000 theo core-site.xml
-    val inputPath = "hdfs://localhost:9000/hcmus/23120099/words.txt"
-    val lines = sc.textFile(inputPath)   // Mỗi phần tử RDD là một dòng văn bản
+    job.setOutputKeyClass(classOf[Text])
+    job.setOutputValueClass(classOf[IntWritable])
 
-    // Bước 4: Xử lý từng dòng — tách từ bằng dấu cách (không dùng regex)
-    val words = lines.flatMap { line =>
-      line.split(" ")                    // Phân tách bằng ký tự cách đơn giản
+    val inputPath = new Path("hdfs://localhost:9000/hcmus/23120099/words.txt")
+    val outputPath = new Path("hdfs://localhost:9000/hcmus/23120099/output_wordcount")
+
+    val fs = outputPath.getFileSystem(conf)
+    if (fs.exists(outputPath)) {
+      fs.delete(outputPath, true)
     }
 
-    // Bước 5: Lọc bỏ các token rỗng phát sinh sau khi split
-    val nonEmptyWords = words.filter { word =>
-      word.nonEmpty                      // Loại bỏ chuỗi rỗng ""
-    }
+    FileInputFormat.addInputPath(job, inputPath)
+    FileOutputFormat.setOutputPath(job, outputPath)
 
-    // Bước 6: Chuyển tất cả từ về chữ thường để so sánh không phân biệt hoa thường
-    val lowerWords = nonEmptyWords.map { word =>
-      word.toLowerCase                   // "Hello" -> "hello", "THE" -> "the"
-    }
-
-    // Bước 7: Chỉ giữ lại các từ bắt đầu bằng một trong 8 chữ cái mục tiêu
-    val filteredWords = lowerWords.filter { word =>
-      word.nonEmpty && TARGET_LETTERS.contains(word.charAt(0))
-      // Kiểm tra ký tự đầu tiên có thuộc tập {f, i, t, h, c, m, u, s} không
-    }
-
-    // Bước 8: Ánh xạ mỗi từ thành cặp (chữ_cái_đầu, 1) để đếm
-    val letterOnePairs = filteredWords.map { word =>
-      (word.charAt(0).toString, 1)       // Ví dụ: "fish" -> ("f", 1)
-    }
-
-    // Bước 9: Gộp (reduce) theo key — cộng dồn số 1 của cùng một chữ cái
-    val letterCounts = letterOnePairs.reduceByKey { (count1, count2) =>
-      count1 + count2                    // Ví dụ: ("f", 1), ("f", 1) -> ("f", 2)
-    }
-
-    // Bước 10: Sắp xếp kết quả theo chữ cái (key) tăng dần để output có thứ tự
-    val sortedCounts = letterCounts.sortByKey(ascending = true)
-
-    // Bước 11: Chuyển đổi sang định dạng TSV (tab-separated values)
-    // Mỗi dòng: "chữ_cái\tsố_đếm" theo yêu cầu output của bài
-    val tsvOutput = sortedCounts.map { case (letter, count) =>
-      s"$letter\t$count"                 // Nối bằng ký tự tab '\t'
-    }
-
-    // Bước 12: Ghi kết quả ra file results.txt trên hệ thống file cục bộ
-    // Dùng coalesce(1) để ghi vào một file duy nhất thay vì nhiều part file
-    val outputPath = "results"
-    tsvOutput.coalesce(1).saveAsTextFile(outputPath)
-    // Sau khi chạy, kết quả nằm ở results/part-00000
-
-    // Bước 13: In kết quả ra console để kiểm tra nhanh
-    println("=== Kết quả WordCount ===")
-    sortedCounts.collect().foreach { case (letter, count) =>
-      println(s"$letter\t$count")        // Hiển thị từng dòng kết quả
-    }
-
-    // Bước 14: Dừng SparkContext để giải phóng tài nguyên
-    sc.stop()
+    System.exit(if (job.waitForCompletion(true)) 0 else 1)
   }
 }
 \end{minted}
@@ -114,79 +126,57 @@ object WordCount {
 Giải thích các thành phần chính của chương trình:
 
 \begin{itemize}
-  \item \mintinline{scala}{SparkConf} và \mintinline{scala}{SparkContext}: hai đối
-        tượng cốt lõi để khởi tạo môi trường Spark. \mintinline{scala}{SparkContext}
-        là cổng vào duy nhất để tương tác với cluster.
-
-  \item \mintinline{scala}{sc.textFile(inputPath)}: đọc file từ HDFS và tạo một RDD
-        trong đó mỗi phần tử là một dòng văn bản. Spark tự động xử lý việc đọc phân
-        tán từ các DataNode.
-
-  \item \mintinline{scala}{flatMap}: ánh xạ mỗi dòng thành nhiều từ và làm phẳng
-        (flatten) kết quả thành một RDD duy nhất chứa tất cả các từ.
-
-  \item \mintinline{scala}{reduceByKey}: thực hiện tổng hợp phân tán — gộp tất cả
-        các cặp có cùng key (chữ cái đầu) bằng hàm cộng, tương đương với bước
-        \textit{Reduce} trong mô hình MapReduce.
-
-  \item \mintinline{scala}{sortByKey}: sắp xếp RDD theo key theo thứ tự từ điển,
-        đảm bảo output có thứ tự nhất quán.
-
-  \item \mintinline{scala}{coalesce(1)}: hợp nhất tất cả partition thành một file
-        duy nhất trước khi ghi, tránh tình trạng kết quả bị phân mảnh thành nhiều
-        \texttt{part-XXXXX} file.
+  \item \mintinline{scala}{TokenizerMapper}: kế thừa class \mintinline{scala}{Mapper} của Hadoop. Thực hiện việc đọc từng dòng, cắt từ qua khoảng trắng (`split`), lấy chữ cái đầu tiện viết thường và phát sinh dạng cặp `(Text, IntWritable)` cho những từ đúng thoả mãn luật (`f, i, t, h, c, m, u, s`).
+  \item \mintinline{scala}{IntSumReducer}: nhận đầu vào là các `IntWritable` iterables từ Mapper và tính tổng, tương đương cho bước Combine và Reduce.
+  \item \mintinline{scala}{CustomSortComparator}: can thiệp trực tiếp vào phase \textit{Shuffle \& Sort} của MapReduce. Thay vì sắp xếp từ vựng mặc định, class này so sánh khoá theo thứ tự bản đồ lưu sẵn (Map `f=1, i=2...`). Điều này giúp MapReduce xuất thẳng ra các phần tử với thứ tự mong đợi ra file trên HDFS mà không cần thêm bước Sort riêng rẽ.
+  \item \mintinline{scala}{fs.delete(outputPath, true)}: Cơ chế tiện ích cho driver tự động dọn dẹp path `output_wordcount` nếu đã tồn tại để tránh job MapReduce bị văng lỗi.
 \end{itemize}
 
 % ------------------------------------------------------------
 \subsection{Hướng dẫn biên dịch và chạy}
 
-Dự án được tổ chức theo cấu trúc SBT (Scala Build Tool) tiêu chuẩn. Để biên dịch
-và đóng gói chương trình, tôi chạy lệnh sau trong thư mục gốc của dự án:
+Dự án sử dụng SBT để quản lý. Thêm dòng `libraryDependencies += "org.apache.hadoop" \% "hadoop-client" \% "3.3.6" \% "provided"` vào `build.sbt`. Để biên dịch và sinh ra Fat JAR, gõ lệnh:
 
 \begin{minted}{bash}
-sbt package
+sbt assembly
 \end{minted}
 
-Lệnh này biên dịch toàn bộ mã nguồn Scala và tạo ra file JAR tại
-\texttt{target/scala-2.12/wordcount\_2.12-1.0.jar}. Sau khi có file JAR, tôi submit
-job lên Spark:
+Tiến hành submit ứng dụng lên Hadoop:
 
 \begin{minted}{bash}
-spark-submit \
-  --class WordCount \
-  --master local[*] \
-  target/scala-2.12/wordcount_2.12-1.0.jar
+hadoop jar target/scala-2.13/WordCount-assembly-1.0.jar WordCount
 \end{minted}
 
-Spark sẽ đọc file \texttt{words.txt} trực tiếp từ HDFS thông qua đường dẫn
-\texttt{hdfs://localhost:9000/hcmus/23120099/words.txt} đã được hardcode trong mã
-nguồn. Quá trình này sử dụng thư viện Hadoop client tích hợp sẵn trong Spark để
-giao tiếp với NameNode và DataNode. Với chế độ \texttt{local[*]}, Spark sử dụng
-tất cả CPU core của máy để thực thi job mà không cần cluster YARN riêng biệt.
+Mã nguồn sẽ bắt đầu phase Mapping và Reducing rồi dump phần output vào đường dẫn thư mục \texttt{hdfs://localhost:9000/hcmus/23120099/output\_wordcount}.
 
-% Ảnh chụp màn hình kết quả spark-submit
+% Ảnh chụp màn hình kết quả hadoop jar
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.9\textwidth]{spark_submit.png}
-  \caption{Chạy spark-submit WordCount thành công}
+  \caption{Quá trình khởi chạy Job Hadoop MapReduce thành công}
   \label{fig:spark-submit}
 \end{figure}
+
+Lấy file output gộp từ HDFS ra máy local thành file \texttt{results.txt}:
+\begin{minted}{bash}
+hdfs dfs -getmerge /hcmus/23120099/output_wordcount results.txt
+\end{minted}
 
 % ------------------------------------------------------------
 \subsection{Kết quả}
 
-Sau khi chạy xong, kết quả được lưu vào file \texttt{results/part-00000} với định
-dạng tab-separated. Nội dung file \texttt{results.txt} thu được:
+Sau khi chạy xong, kết quả được lưu vào file \texttt{results.txt} với định
+dạng tab-separated. Nội dung file thu được hiển thị chuẩn MapReduce và Comparator custom:
 
 \begin{minted}{text}
-c	38934
 f	15870
-h	18662
 i	15220
-m	25194
-s	50571
 t	25223
+h	18662
+c	38934
+m	25194
 u	23790
+s	50571
 \end{minted}
 
 % Ảnh chụp màn hình cat results.txt
@@ -211,29 +201,28 @@ fish Imagine the House cat Mango umbrella Sun Fire hello
 
 \textbf{Kết quả tính tay (không phân biệt hoa thường):}
 \begin{itemize}
-  \item \textbf{c}: cat $\rightarrow$ 1
   \item \textbf{f}: fish, Fire $\rightarrow$ 2
-  \item \textbf{h}: House, hello $\rightarrow$ 2
   \item \textbf{i}: Imagine $\rightarrow$ 1
-  \item \textbf{m}: Mango $\rightarrow$ 1
-  \item \textbf{s}: Sun $\rightarrow$ 1
   \item \textbf{t}: the $\rightarrow$ 1
+  \item \textbf{h}: House, hello $\rightarrow$ 2
+  \item \textbf{c}: cat $\rightarrow$ 1
+  \item \textbf{m}: Mango $\rightarrow$ 1
   \item \textbf{u}: umbrella $\rightarrow$ 1
+  \item \textbf{s}: Sun $\rightarrow$ 1
 \end{itemize}
 
 \textbf{Kết quả mong đợi (TSV):}
 \begin{minted}{text}
-c	1
 f	2
-h	2
 i	1
-m	1
-s	1
 t	1
+h	2
+c	1
+m	1
 u	1
+s	1
 \end{minted}
 
-\textbf{Kết quả thực tế từ chương trình:} Kết quả từ chạy WordCount trên file kiểm
+\textbf{Kết quả thực tế từ chương trình:} Kết quả từ chạy WordCount (Hadoop MapReduce) trên file kiểm
 thử khớp hoàn toàn với kết quả tính tay, xác nhận rằng chương trình hoạt động đúng
-theo logic MapReduce: đọc từ HDFS, phân tách theo dấu cách, chuyển chữ thường, lọc
-8 chữ cái mục tiêu, đếm, sắp xếp, và xuất định dạng TSV.
+yêu cầu MapReduce thuần. Output nhận được chính xác định dạng TSV cùng lúc việc Custom Comparator đảm bảo thứ hạng 8 ký tự mục tiêu f, i, t, h, c, m, u, s được tuân thủ tuyệt đối.
