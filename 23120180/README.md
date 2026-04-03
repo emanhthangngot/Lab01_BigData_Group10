@@ -14,17 +14,18 @@
 │  ├─ 23120180_verification.txt
 │  └─ Report.pdf
 └─ src/
-   ├─ WordCount.scala
-   └─ results.txt
+  └─ WordCount/
+    ├─ WordCount.scala
+    └─ results.txt
 ```
 
 ## Mô tả thành phần chính
-- `src/WordCount.scala`:
+- `src/WordCount/WordCount.scala`:
   - `TokenizerMapper`: tách từ, lấy ký tự đầu, lọc theo tập ký tự mục tiêu.
   - `IntSumReducer`: cộng dồn số lần xuất hiện.
   - `CustomSortComparator`: ép thứ tự output `f -> i -> t -> h -> c -> m -> u -> s`.
   - `WordCount` (Driver): cấu hình job, khai báo input/output HDFS, tự xóa output cũ.
-- `src/results.txt`: kết quả cuối đã trích xuất về máy local.
+- `src/WordCount/results.txt`: kết quả cuối đã trích xuất về máy local.
 - `docs/23120180_verification.txt`: thông tin xác thực môi trường máy chạy bài.
 
 ## Dữ liệu đầu vào/đầu ra
@@ -85,7 +86,7 @@ cat results.txt
 - Trên terminal khi submit job: `map 100% reduce 100%`.
 - File output ở HDFS có định dạng TSV, đúng thứ tự `f, i, t, h, c, m, u, s`.
 
-## Kết quả hiện tại (`src/results.txt`)
+## Kết quả hiện tại (`src/WordCount/results.txt`)
 
 ```text
 f	15870
