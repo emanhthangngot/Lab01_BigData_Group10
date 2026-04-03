@@ -10,6 +10,8 @@ import org.apache.hadoop.mapreduce.Reducer
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 
+import java.util.StringTokenizer
+
 class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
 
   val one = new IntWritable(1)
@@ -17,11 +19,13 @@ class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
   val valid = Set('f','i','t','h','c','m','u','s')
 
   override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context): Unit = {
-    val tokens = value.toString.split("\\s+")
+    val tokenizer = new StringTokenizer(value.toString)
 
-    for (token <- tokens) {
+    while (tokenizer.hasMoreTokens) {
+      val token = tokenizer.nextToken().toLowerCase
+
       if (token.length > 0) {
-        val first = token.toLowerCase.charAt(0)
+        val first = token.charAt(0)
         if (valid.contains(first)) {
           word.set(first.toString)
           context.write(word, one)
